@@ -1,0 +1,70 @@
+# Functions and Strings
+print('Hello World!');
+print(repr('Hello Cocktail!'));
+
+# Constants
+print(true);
+print(false);
+print(none);
+
+# Variable Declaration
+a = 5;
+b = 2;
+
+# Binary Operations
+print(a + b);
+print(a - b);
+print(a * b);
+print(a / b);
+print(a // b);
+print(a % b);
+print(a ** b);
+print(a & b);
+print(a ^ b);
+print(a | b);
+print(2a);
+print(2(a + b));
+
+# Comparison Operations
+print(a < b);
+print(a <= b);
+print(a == b);
+print(a != b);
+print(a > b);
+print(a >= b);
+print(a === b);
+print(a !== b);
+
+# Unary Operations
+print(~a);
+print(not a);
+print(+a);
+print(-a);
+
+a = 1;
+b = -1;
+c = 0;
+
+# If Statement
+if (a > 0) {
+    print('a is positive');
+}
+
+if (b > 0) {
+    print('b is positive');
+} else {
+    print('b is not positive');
+}
+
+if (c > 0) {
+    print('c is positive');
+} elif (c == 0) {
+    print('c is zero');
+} else {
+    print('c is negative');
+}
+
+# Input
+text = input('> ');  # BUG
+print('You entered: ');
+print(text);
