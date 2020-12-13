@@ -1,6 +1,7 @@
 # The Cocktail Lang
 The Cocktail Lang helps you to create speedy and beautiful code easily.
 
+
 ## Installation
 Use git to install Cocktail Lang.
 
@@ -14,6 +15,11 @@ pip install -r requirements.txt
 ```
 
 This project requires Python 3.8
+
+
+## Extension
+[Cocktail Lang Support](https://github.com/peter-hunt/cocktail-lang-support)
+WARNING: This extension is unstable, read the instructions carefully before installing.
 
 ## More Information
 For more information about the programming language, use the links below:
