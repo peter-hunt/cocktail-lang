@@ -1,7 +1,7 @@
 from rply import ParserGenerator
 
 from .ast import (
-    Module, Assign, Expr, Constant, Number, String, Name,
+    Module, Assign, AugAssign, Expr, Constant, Number, String, Name,
     BinOp, UnaryOp, Compare,
     Mult,
     Input, Print, Repr,
@@ -9,7 +9,7 @@ from .ast import (
     Load, Store,
 )
 from .error import throw
-from .lexer import BIN_OP, UNARY_OP, CMP_OP, TOKENS
+from .lexer import BIN_OP, INPLACE_OP, UNARY_OP, CMP_OP, TOKENS
 from .obj import RESERVED
 
 
@@ -291,7 +291,8 @@ class Parser():
         @self.pg.production('expr : NAME EQUAL expr')
         def assignment_expr(p):
             if p[0].value in RESERVED:
-                exit(f'cannot assign to {p[0].value}')
+                throw(info, p[0], 'SyntaxError',
+                      f'cannot assign to {p[0].value}')
             name = Name(p[0], Store())
             name.info = info
             return Assign(name, p[2])
@@ -338,6 +339,32 @@ class Parser():
             left.info = info
             right.info = info
             return BinOp(left, bin_op, right)
+
+        @self.pg.production('expr : NAME PLUSEQUAL expr')
+        @self.pg.production('expr : NAME MINUSEQUAL expr')
+        @self.pg.production('expr : NAME STAREQUAL expr')
+        @self.pg.production('expr : NAME SLASHEQUAL expr')
+        @self.pg.production('expr : NAME DOUBLESLASHEQUAL expr')
+        @self.pg.production('expr : NAME PERCENTEQUAL expr')
+        @self.pg.production('expr : NAME DOUBLESTAREQUAL expr')
+        @self.pg.production('expr : NAME LEFTSHIFTEQUAL expr')
+        @self.pg.production('expr : NAME RIGHTSHIFTEQUAL expr')
+        @self.pg.production('expr : NAME AMPEREQUAL expr')
+        @self.pg.production('expr : NAME CIRCUMFLEXEQUAL expr')
+        @self.pg.production('expr : NAME VBAREQUAL expr')
+        def inplace_assign_expr(p):
+            name, op, value = p
+            if name.value in RESERVED:
+                throw(info, name, 'SyntaxError',
+                      f"'{name.value}' is an illegal expression "
+                      f"for augmented assignment")
+
+            name = Name(name, Store())
+            name.info = info
+            bin_op = INPLACE_OP[op.gettokentype()]()
+            bin_op.info = info
+            value.info = info
+            return AugAssign(name, bin_op, value)
 
         @self.pg.production('expr : NUMBER NAME')
         def variable_multiplication(p):

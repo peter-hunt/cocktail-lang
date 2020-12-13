@@ -1,4 +1,4 @@
-func a(num) {
+func a(num=1) {
     print(num + 1);
 }
 

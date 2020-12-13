@@ -1,6 +1,6 @@
 # Tags
 
 Here're some objective tags for the Cocktail Programming Language:
-- Beautiful Code
+- Beautifully Coding
 - Great Readability
 - Speedy Performance

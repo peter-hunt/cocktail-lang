@@ -103,6 +103,21 @@ BIN_OP = {
     'VBAR': BitOr,
 }
 
+INPLACE_OP = {
+    'PLUSEQUAL': Add,
+    'MINUSEQUAL': Sub,
+    'STAREQUAL': Mult,
+    'SLASHEQUAL': Div,
+    'DOUBLESLASHEQUAL': FloorDiv,
+    'PERCENTEQUAL': Mod,
+    'DOUBLESTAREQUAL': Pow,
+    'LEFTSHIFTEQUAL': LShift,
+    'RIGHTSHIFTEQUAL': RShift,
+    'AMPEREQUAL': BitAnd,
+    'CIRCUMFLEXEQUAL': BitXor,
+    'VBAREQUAL': BitOr,
+}
+
 CMP_OP = {
     'LESS': Lt,
     'LESSEQUAL': LtE,
@@ -172,6 +187,20 @@ class Lexer():
         self.lexer.add('SEMI', r';')
         self.lexer.add('RARROW', r'\->')
 
+        # In-place Operations (Multi-Character)
+        self.lexer.add('DOUBLESLASHEQUAL', r'//=')
+        self.lexer.add('PLUSEQUAL', r'\+=')
+        self.lexer.add('MINUSEQUAL', r'\-=')
+        self.lexer.add('STAREQUAL', r'\*=')
+        self.lexer.add('ATEQUAL', r'@=')
+        self.lexer.add('SLASHEQUAL', r'/=')
+        self.lexer.add('PERCENTEQUAL', r'%=')
+        self.lexer.add('DOUBLESTAREQUAL', r'\*\*=')
+        self.lexer.add('LEFTSHIFTEQUAL', r'<<=')
+        self.lexer.add('RIGHTSHIFTEQUAL', r'>>=')
+        self.lexer.add('AMPEREQUAL', r'&=')
+        self.lexer.add('CIRCUMFLEXEQUAL', r'\^=')
+        self.lexer.add('VBAREQUAL', r'\|=')
         # Comparison Operations (Multi-Character)
         self.lexer.add('EQEQEQUAL', r'===')
         self.lexer.add('NOTEQEQEQUAL', r'!==')
@@ -184,20 +213,6 @@ class Lexer():
         self.lexer.add('DOUBLESTAR', r'\*\*')
         self.lexer.add('LEFTSHIFT', r'<<')
         self.lexer.add('RIGHTSHIFT', r'>>')
-        # In-place Operations (Multi-Character)
-        self.lexer.add('PLUSEQUAL', r'\+=')
-        self.lexer.add('MINUSEQUAL', r'\-=')
-        self.lexer.add('STAREQUAL', r'\*=')
-        self.lexer.add('ATEQUAL', r'@=')
-        self.lexer.add('SLASHEQUAL', r'/=')
-        self.lexer.add('DOUBLESLASHEQUAL', r'//=')
-        self.lexer.add('PERCENTEQUAL', r'%=')
-        self.lexer.add('DOUBLESTAREQUAL', r'\*\*=')
-        self.lexer.add('LEFTSHIFTEQUAL', r'<<=')
-        self.lexer.add('RIGHTSHIFTEQUAL', r'>>=')
-        self.lexer.add('AMPEREQUAL', r'&=')
-        self.lexer.add('CIRCUMFLEXEQUAL', r'\^=')
-        self.lexer.add('VBAREQUAL', r'\|=')
         # Comparison Operations
         self.lexer.add('LESS', r'<')
         self.lexer.add('GREATER', r'>')
@@ -219,6 +234,7 @@ class Lexer():
         # Ignore Spaces
         self.lexer.ignore(r'\s+')
         self.lexer.ignore(r'\#.+\n')
+        self.lexer.ignore(r'/\*[\s\S]*\*/')
 
     def get_lexer(self):
         self._add_tokens()

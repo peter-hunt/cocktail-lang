@@ -1,17 +1,22 @@
+# Comment
+/*
+ * Block Comment
+ */
+
 # Functions and Strings
 print('Hello World!');
 print(repr('Hello Cocktail!'));
 
-# Constants
+print('\n# Constants');
 print(true);
 print(false);
 print(none);
 
 # Variable Declaration
 a = 5;
-b = 2;
+b = 2e1;
 
-# Binary Operations
+print('\n# Binary Operations');
 print(a + b);
 print(a - b);
 print(a * b);
@@ -27,7 +32,37 @@ print(a | b);
 print(2a);
 print(2(a + b));
 
-# Comparison Operations
+
+c = 1;
+print('\n# In-place Binary Operations');
+c += 3;
+print(c);
+c -= 1;
+print(c);
+c *= 2;
+print(c);
+c /= 3;
+print(c);
+c //= 1.5;
+print(c);
+c %= 1;
+print(c);
+c = 2;
+c **= 5;
+print(c);
+c <<= 2;
+print(c);
+c >>= 2;
+print(c);
+c &= 6;
+print(c);
+c ^= 4;
+print(c);
+c |= 2;
+print(c);
+
+
+print('\n# Comparison Operations');
 print(a < b);
 print(a <= b);
 print(a == b);
@@ -37,7 +72,8 @@ print(a >= b);
 print(a === b);
 print(a !== b);
 
-# Unary Operations
+
+print('\n# Unary Operations');
 print(~a);
 print(not a);
 print(+a);
@@ -47,7 +83,7 @@ a = 1;
 b = -1;
 c = 0;
 
-# If Statement
+print('\n# If Statement');
 if (a > 0) {
     print('a is positive');
 }
@@ -66,7 +102,7 @@ if (c > 0) {
     print('c is negative');
 }
 
-# Input
+# # Input
 # text = input('> ');  # BUG
 # print('You entered: ');
 # print(text);
