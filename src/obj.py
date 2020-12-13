@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from .error import throw
 
 
@@ -8,7 +10,7 @@ class Type:
 class ModuleType(Type):
     # ----- Initialization Methods ----- #
     def __init__(self, env):
-        self.env = env
+        self.env = deepcopy(env)
 
     # ----- Informal Methods ----- #
     def __repr__(self):
@@ -167,6 +169,30 @@ class NumberType(Type):
         else:
             return NotImplemented
 
+    def __lshift__(self, other):
+        if isinstance(other, NumberType):
+            if self.value % 1 != 0:
+                throw(self.value.info, self.value.token, 'TypeError',
+                      'floats cannot be in << operations', line=True)
+            if other.value % 1 != 0:
+                throw(self.value.info, self.value.token, 'TypeError',
+                      'floats cannot be in << operations', line=True)
+            return NumberType(int(self.value) << int(other.value))
+        else:
+            return NotImplemented
+
+    def __rshift__(self, other):
+        if isinstance(other, NumberType):
+            if self.value % 1 != 0:
+                throw(self.value.info, self.value.token, 'TypeError',
+                      'floats cannot be in >> operations', line=True)
+            if other.value % 1 != 0:
+                throw(self.value.info, self.value.token, 'TypeError',
+                      'floats cannot be in >> operations', line=True)
+            return NumberType(int(self.value) >> int(other.value))
+        else:
+            return NotImplemented
+
     # ----- Bitwise Calculation Methods ----- #
     def __and__(self, other):
         if isinstance(other, NumberType):
@@ -238,12 +264,76 @@ class StringType(Type):
 
 
 class NameType:
+    # ----- Initialization Methods ----- #
     def __init__(self, id):
         self.id = id
+
+
+class ArgType:
+    # ----- Initialization Methods ----- #
+    def __init__(self, arg):
+        self.arg = arg
+
+
+class ArgumentsType:
+    # ----- Initialization Methods ----- #
+    def __init__(self, posonlyargs=None, args=None, vararg=None,
+                 kwonlyargs=None, kw_defaults=None, kwarg=None, defaults=None):
+        self.posonlyargs = [] if posonlyargs is None else posonlyargs
+        self.args = [] if args is None else args
+        self.vararg = vararg
+        self.kwonlyargs = [] if kwonlyargs is None else kwonlyargs
+        self.kw_defaults = [] if kw_defaults is None else kw_defaults
+        self.kwarg = kwarg
+        self.defaults = [] if defaults is None else defaults
+        self.body = [] if body is None else body
+
+
+class FunctionType:
+    # ----- Initialization Methods ----- #
+    def __init__(self, name=None, args=None, body=None, qualname=None):
+        self.name = '<anonymous>' if name is None else name
+        self.args = ArgumentsType() if args is None else args
+        self.body = [] if body is None else body
+        self.qualname = self.name if qualname is None else qualname
+
+    # ----- Informal Methods ----- #
+    def __repr__(self):
+        return f'<function {self.name} at {id(self):#x}>'
+
+
+class BuiltinFunctionType:
+    # ----- Initialization Methods ----- #
+    def __init__(self):
+        self.name = '<anonymous>'
+        self.args = ArgumentsType()
+
+    # ----- Informal Methods ----- #
+    def __repr__(self):
+        return f'<built-in function {self.name}>'
+
+    # ----- Functional Methods ----- #
+    def __call__(self):
+        pass
+
+
+class PrintFunction:
+    # ----- Initialization Methods ----- #
+    def __init__(self):
+        self.name = 'print'
+        self.args = ArgumentsType()
+
+    # ----- Functional Methods ----- #
+    def __call__(self):
+        pass
 
 
 RESERVED = {
     'false': BooleanType(False),
     'true': BooleanType(True),
     'none': NoneType(),
+}
+
+DEFAULT_ENV = {
+    # 'print': BuiltinFunctionType('print'),
 }

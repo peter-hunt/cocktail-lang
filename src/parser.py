@@ -5,7 +5,7 @@ from .ast import (
     BinOp, UnaryOp, Compare,
     Mult,
     Input, Print, Repr,
-    If,
+    If, While, Break, Continue, FunctionDef, Global, Nonlocal, Arguments, Arg,
     Load, Store,
 )
 from .error import throw
@@ -33,7 +33,11 @@ class Parser():
                     'GREATER', 'GREATEREQUAL', 'EQEQEQUAL', 'NOTEQEQEQUAL',
                     'IN', 'NOTIN',
                 ]),
+                ('left', ['VBAR']),
+                ('left', ['CIRCUMFLEX']),
+                ('left', ['AMPER']),
                 ('left', ['PLUS', 'MINUS']),
+                ('left', ['LEFTSHIFT', 'RIGHTSHIFT']),
                 ('left', ['STAR', 'SLASH', 'DOUBLESLASH', 'PERCENT']),
                 ('left', ['INVERT', 'UADD', 'USUB']),
                 ('left', ['DOUBLESTAR']),
@@ -49,21 +53,22 @@ class Parser():
         def single_stmt_program(p):
             return Module([Expr(p[0])])
 
-        @self.pg.production('program : if_stmt')
-        @self.pg.production('program : if_else_stmt')
-        @self.pg.production('program : if_elif_stmt')
-        def merge_program(p):
-            return Module([p[0]])
-
         @self.pg.production('program : expr SEMI program')
-        def merge_program(p):
+        def merge_expr_to_program(p):
             return Module([Expr(p[0]), *p[2].body])
 
         @self.pg.production('program : if_stmt program')
         @self.pg.production('program : if_else_stmt program')
         @self.pg.production('program : if_elif_stmt program')
-        def merge_program(p):
+        @self.pg.production('program : func_def program')
+        @self.pg.production('program : while_stmt program')
+        def merge_stmt_to_program(p):
             return Module([p[0], *p[1].body])
+
+        @self.pg.production('program : break_stmt SEMI program')
+        @self.pg.production('program : continue_stmt SEMI program')
+        def merge_stmt_to_program(p):
+            return Module([p[0], *p[2].body])
 
         @self.pg.production(
             'if_stmt : IF LPAR expr RPAR LBRACE program RBRACE'
@@ -72,10 +77,10 @@ class Parser():
             return If(p[2], p[5].body)
 
         @self.pg.production(
-            'if_else_stmt : if_stmt ELSE LBRACE program RBRACE'
+            'if_else_stmt : if_stmt or_else_stmt'
         )
         def if_else_stmt(p):
-            return If(p[0].test, p[0].body, p[3].body)
+            return If(p[0].test, p[0].body, p[1])
 
         @self.pg.production(
             'if_elif_stmt : if_stmt merged_elif_stmt'
@@ -109,10 +114,179 @@ class Parser():
 
         @self.pg.production(
             'elif_else_stmt : ELIF LPAR expr RPAR LBRACE program RBRACE'
-            '                 ELSE LBRACE program RBRACE'
+            '                 or_else_stmt'
         )
         def elif_else_stmt(p):
-            return If(p[2], p[5].body, p[9].body)
+            return If(p[2], p[5].body, p[7])
+
+        @self.pg.production(
+            'while_stmt : WHILE LPAR expr RPAR LBRACE program RBRACE'
+        )
+        def while_stmt(p):
+            return While(p[2], p[5].body)
+
+        @self.pg.production(
+            'while_stmt : WHILE LPAR expr RPAR LBRACE program RBRACE'
+            '             or_else_stmt'
+        )
+        def while_else_stmt(p):
+            return While(p[2], p[5].body, p[7])
+
+        @self.pg.production('or_else_stmt : ELSE LBRACE program RBRACE')
+        def or_else_stmt(p):
+            return p[2].body
+
+        @self.pg.production('break_stmt : BREAK')
+        def break_stmt(p):
+            result = Break(p[0])
+            result.info = info
+            return result
+
+        @self.pg.production('continue_stmt : CONTINUE')
+        def continue_stmt(p):
+            result = Continue(p[0])
+            result.info = info
+            return result
+
+        @self.pg.production(
+            'func_def : FUNC NAME LPAR args_def RPAR'
+            '           LBRACE program RBRACE'
+        )
+        def func_def_stmt(p):
+            return FunctionDef(p[1].value, p[3], p[6].body)
+
+        @self.pg.production('args_def :')
+        def empty_args_def_expr(p):
+            return Arguments()
+
+        @self.pg.production('args_def : pos_only_args')
+        @self.pg.production('args_def : normal_args')
+        @self.pg.production('args_def : kw_only_args')
+        def single_type_args_def_expr(p):
+            return p[0]
+
+        @self.pg.production('args_def : pos_only_args COMMA normal_args')
+        def poa_na_args_def_expr(p):
+            return Arguments(
+                posonlyargs=p[0].posonlyargs, args=p[2].args,
+                defaults=p[0].defaults + p[2].defaults,
+            )
+
+        @self.pg.production(
+            'args_def : pos_only_args COMMA kw_only_args opt_kwarg'
+        )
+        def poa_koa_args_def_expr(p):
+            return Arguments(
+                posonlyargs=p[0].posonlyargs, vararg=p[2].vararg,
+                kwonlyargs=p[2].kwonlyargs, defaults=p[0].defaults,
+                kw_defaults=p[2].kw_defaults, kwarg=p[3].kwarg,
+            )
+
+        @self.pg.production(
+            'args_def : normal_args COMMA kw_only_args opt_kwarg'
+        )
+        def na_koa_args_def_expr(p):
+            return Arguments(
+                args=p[0].args, vararg=p[2].vararg, kwonlyargs=p[2].kwonlyargs,
+                defaults=p[0].defaults, kw_defaults=p[2].kw_defaults,
+                kwarg=p[3].kwarg,
+            )
+
+        @self.pg.production(
+            'args_def : pos_only_args COMMA normal_args COMMA kw_only_args'
+            '           opt_kwarg'
+        )
+        def poa_na_koa_args_def_expr(p):
+            return Arguments(
+                posonlyargs=p[0].posonlyargs, args=p[2].args,
+                vararg=p[4].vararg, kwonlyargs=p[4].kwonlyargs,
+                defaults=p[0].defaults + p[2].defaults,
+                kw_defaults=p[4].kw_defaults, kwarg=p[5].kwarg,
+            )
+
+        @self.pg.production('kw_only_args : STAR')
+        def empty_kw_only_args_expr(p):
+            return Arguments()
+
+        @self.pg.production('kw_only_args : STAR COMMA args')
+        @self.pg.production('kw_only_args : STAR COMMA kwargs')
+        def kw_only_args_expr(p):
+            return Arguments(kwonlyargs=p[2][0], kw_defaults=p[2][1])
+
+        @self.pg.production('kw_only_args : STAR COMMA args COMMA kwargs')
+        def kw_only_args_kwargs_expr(p):
+            return Arguments(
+                kwonlyargs=p[2][0] + p[4][0],
+                kw_defaults=p[2][1] + p[4][1],
+            )
+
+        @self.pg.production('kw_only_args : STAR NAME COMMA args')
+        @self.pg.production('kw_only_args : STAR NAME COMMA kwargs')
+        def kw_only_args_with_vararg_expr(p):
+            return Arguments(
+                vararg=Arg(p[1].value), kwonlyargs=p[3][0], kw_defaults=p[3][1]
+            )
+
+        @self.pg.production('kw_only_args : STAR NAME COMMA args COMMA kwargs')
+        def kw_only_args_with_vararg_kwargs_expr(p):
+            return Arguments(
+                vararg=Arg(p[1].value),
+                kwonlyargs=p[3][0] + p[5][0], kw_defaults=p[3][1] + p[5][1],
+            )
+
+        @self.pg.production('opt_kwarg :')
+        def empty_optional_keyword_arg_expr(p):
+            return Arguments(kwarg=None)
+
+        @self.pg.production('opt_kwarg : DOUBLESTAR NAME')
+        def optional_keyword_arg_expr(p):
+            return Arguments(kwarg=Arg(p[1].value))
+
+        @self.pg.production('normal_args :')
+        def empty_normal_args_expr(p):
+            return Arguments()
+
+        @self.pg.production('normal_args : args')
+        @self.pg.production('normal_args : kwargs')
+        def normal_args_expr(p):
+            return Arguments(args=p[0][0], defaults=p[0][1])
+
+        @self.pg.production('normal_args : args COMMA kwargs')
+        def normal_args_kwargs_expr(p):
+            return Arguments(
+                args=p[0][0] + p[2][0], defaults=p[0][1] + p[2][1]
+            )
+
+        @self.pg.production('pos_only_args : SLASH')
+        def empty_pos_only_args_expr(p):
+            return Arguments()
+
+        @self.pg.production('pos_only_args : args COMMA SLASH')
+        @self.pg.production('pos_only_args : kwargs COMMA SLASH')
+        def pos_only_args_expr(p):
+            return Arguments(posonlyargs=p[0][0], defaults=p[0][1])
+
+        @self.pg.production('pos_only_args : args COMMA kwargs COMMA SLASH')
+        def pos_only_args_kwargs_expr(p):
+            return Arguments(
+                posonlyargs=p[0][0] + p[2][0], defaults=p[0][1] + p[2][1]
+            )
+
+        @self.pg.production('args : NAME COMMA args')
+        def args_expr(p):
+            return [[Arg(p[0].value), *p[2][0]], [None, *p[2][1]]]
+
+        @self.pg.production('args : NAME')
+        def single_arg_expr(p):
+            return [[Arg(p[0].value)], [None]]
+
+        @self.pg.production('kwargs : NAME EQUAL expr COMMA kwargs')
+        def keyword_args_expr(p):
+            return [[Arg(p[0].value), *p[4][0]], [p[2], *p[4][1]]]
+
+        @self.pg.production('kwargs : NAME EQUAL expr')
+        def single_keyword_arg_expr(p):
+            return [[Arg(p[0].value)], [p[2]]]
 
         @self.pg.production('expr : NAME EQUAL expr')
         def assignment_expr(p):
@@ -152,6 +326,8 @@ class Parser():
         @self.pg.production('expr : expr DOUBLESLASH expr')
         @self.pg.production('expr : expr PERCENT expr')
         @self.pg.production('expr : expr DOUBLESTAR expr')
+        @self.pg.production('expr : expr LEFTSHIFT expr')
+        @self.pg.production('expr : expr RIGHTSHIFT expr')
         @self.pg.production('expr : expr AMPER expr')
         @self.pg.production('expr : expr CIRCUMFLEX expr')
         @self.pg.production('expr : expr VBAR expr')

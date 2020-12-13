@@ -3,12 +3,12 @@ The Cocktail Lang.
   The Cocktail Lang helps you to create speedy and beautiful code easily.
 
 Usage:
-  cocktail <file> [options]
+  cocktail [options] ... [-c cmd | <file>]
 
 Options:
-  -h --help     Show this screen.
-  -v --version  Show version.
-  --var         Output module variables at the end of execution
+  --help -h   Show this help message and exit (also --help)
+  -c cmd      Execute the line of code (also --version)
+  --version -v  Show Cocktail version number and exit (also --version)
 """
 
 from pathlib import Path
@@ -20,7 +20,7 @@ from src.cocktail import run
 
 
 def main():
-    args = docopt(__doc__, version=__version__)
+    args = docopt(__doc__, version=f'Cocktail {__version__}')
     if args['<file>']:
         path = Path(args['<file>'])
 
@@ -34,14 +34,13 @@ def main():
         with open(path) as file:
             source = file.read()
 
-        var = args['--var']
+        run(source, path=f'{path}')
 
-        result = run(source, path=f'{path}')
-        if var:
-            print(result)
+    elif args['-c'] is not None:
+        run(args['-c'], path='<string>')
 
     else:
-        exit(__doc__.strip())
+        exit(__doc__.split('\n\n')[1].strip())
 
 
 if __name__ == '__main__':

@@ -7,9 +7,13 @@ from .moduleinfo import ModuleInfo
 from .parser import Parser
 
 
-def parse(source, *, path='<unknown>'):
+def lex(source, *, path='<unknown>'):
     lexer = Lexer().get_lexer()
-    tokens = lexer.lex(source)
+    return lexer.lex(source)
+
+
+def parse(source, *, path='<unknown>'):
+    tokens = lex(source, path=path)
 
     # Ignore unused-token errors for early development
     filterwarnings('ignore', r'Token .+ is unused', ParserGeneratorWarning)

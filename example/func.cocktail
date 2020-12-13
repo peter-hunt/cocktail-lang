@@ -1,0 +1,5 @@
+func a(num) {
+    print(num + 1);
+}
+
+print(a);

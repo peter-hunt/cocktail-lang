@@ -19,6 +19,8 @@ print(a / b);
 print(a // b);
 print(a % b);
 print(a ** b);
+print(a << b);
+print(a >> b);
 print(a & b);
 print(a ^ b);
 print(a | b);
@@ -65,6 +67,6 @@ if (c > 0) {
 }
 
 # Input
-text = input('> ');  # BUG
-print('You entered: ');
-print(text);
+# text = input('> ');  # BUG
+# print('You entered: ');
+# print(text);

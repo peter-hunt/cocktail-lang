@@ -13,6 +13,8 @@ Make sure you have Python on your system, and then to install Dependencies, go t
 pip install -r requirements.txt
 ```
 
+This project requires Python 3.8
+
 ## More Information
 For more information about the programming language, use the links below:
 - [Tags](tags.md)

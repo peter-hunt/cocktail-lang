@@ -1,2 +1,11 @@
 Using Tutorial as Origin
 https://blog.usejournal.com/writing-your-own-programming-language-and-compiler-with-python-a468970ae6df
+
+Python Object Methods
+https://docs.python.org/3/reference/datamodel.html#basic-customization
+
+Python Statements
+https://docs.python.org/3/reference/simple_stmts.html
+
+GitHub RPLY
+https://github.com/alex/rply

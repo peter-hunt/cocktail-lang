@@ -1,8 +1,11 @@
 from rply import LexerGenerator
 
 from .ast import (
-    Add, Sub, Mult, Div, FloorDiv, Mod, Pow, BitAnd, BitXor, BitOr,
+    Add, Sub, Mult, Div, FloorDiv, Mod, Pow, LShift, RShift,
+    BitAnd, BitXor, BitOr,
+
     Lt, LtE, Eq, NotEq, Gt, GtE, Is, IsNot, In, NotIn,
+
     Invert, Not, UAdd, USub,
 )
 from .obj import BooleanType, NoneType
@@ -10,11 +13,15 @@ from .obj import BooleanType, NoneType
 
 TOKENS = [
     # Keywords
+    'BREAK',
+    'CONTINUE',
     'ELIF',
     'ELSE',
+    'FUNC',
     'IF',
     'IN',
     'NOT',
+    'WHILE',
     # Identifiers
     'NAME',
     # Constants
@@ -89,6 +96,8 @@ BIN_OP = {
     'DOUBLESLASH': FloorDiv,
     'PERCENT': Mod,
     'DOUBLESTAR': Pow,
+    'LEFTSHIFT': LShift,
+    'RIGHTSHIFT': RShift,
     'AMPER': BitAnd,
     'CIRCUMFLEX': BitXor,
     'VBAR': BitOr,
@@ -121,11 +130,15 @@ class Lexer():
 
     def _add_tokens(self):
         # keywords
+        self.lexer.add('BREAK', r'break')
+        self.lexer.add('CONTINUE', r'continue')
         self.lexer.add('ELIF', r'elif')
         self.lexer.add('ELSE', r'else')
+        self.lexer.add('FUNC', r'func')
         self.lexer.add('IF', r'if')
         self.lexer.add('IN', r'in')
         self.lexer.add('NOT', r'not')
+        self.lexer.add('WHILE', r'while')
         # Identifiers
         self.lexer.add('NAME', r'[A-Za-z_]\w*')
         # Constants
@@ -136,8 +149,8 @@ class Lexer():
         )
         self.lexer.add(
             'STRING',
-            (r'"[^"\n\\]*"'
-             r"|'[^'\n\\]*'")
+            (r'"[^"\n\\]*((\\.)*[^"\n\\]*)*(\\.)*"'
+             r"|'[^'\n\\]*((\\.)*[^'\n\\]*)*(\\.)*'")
         )
 
         # Parenthesis
@@ -183,7 +196,7 @@ class Lexer():
         self.lexer.add('LEFTSHIFTEQUAL', r'<<=')
         self.lexer.add('RIGHTSHIFTEQUAL', r'>>=')
         self.lexer.add('AMPEREQUAL', r'&=')
-        self.lexer.add('CIRCUMFLEXEQUAL', r'^=')
+        self.lexer.add('CIRCUMFLEXEQUAL', r'\^=')
         self.lexer.add('VBAREQUAL', r'\|=')
         # Comparison Operations
         self.lexer.add('LESS', r'<')

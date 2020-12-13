@@ -1,28 +1,32 @@
-from rply.token import Token
+from copy import deepcopy
+
+from rply.token import BaseBox, Token
 
 from .error import throw
 from .obj import (
     Type,
     ModuleType, BooleanType, NoneType, NumberType, StringType, NameType,
-    RESERVED,
+    FunctionType, ArgumentsType, ArgType,
+    RESERVED, DEFAULT_ENV,
 )
 
 
-class Ast:
+class Ast(BaseBox):
     info = None
 
 
 class Module(Ast):
     def __init__(self, body=None):
-        if body is None:
-            self.body = []
-        else:
-            self.body = body.copy()
+        self.body = [] if body is None else body
 
     def eval(self):
-        env = {}
+        env = deepcopy(DEFAULT_ENV)
 
         for stmt in self.body:
+            if isinstance(stmt, ScopeStmt):
+                throw(stmt.info, stmt.token, 'SyntaxError',
+                      f"cannot use '{type(stmt).__name__.lower()}'"
+                      f" outside loop")
             stmt.eval(env)
 
         return ModuleType(env)
@@ -305,6 +309,62 @@ class Pow(Operator):
         else:
             throw(left.info, left.token, 'TypeError',
                   f"unsupported operand type(s) for **: "
+                  f"'{type(left_value).__name__}' and "
+                  f"'{type(right_value).__name__}'", line=True)
+
+
+class LShift(Operator):
+    @staticmethod
+    def eval(left, right, env):
+        left_value = left.eval(env)
+        right_value = right.eval(env)
+
+        if hasattr(left_value, '__lshift__'):
+            result = left_value.__lshift__(right_value)
+        else:
+            result = NotImplemented
+
+        if result is not NotImplemented:
+            return result
+
+        if hasattr(right_value, '__rlshift__'):
+            result = right_value.__rlshift__(left_value)
+        else:
+            result = NotImplemented
+
+        if result is not NotImplemented:
+            return result
+        else:
+            throw(left.info, left.token, 'TypeError',
+                  f"unsupported operand type(s) for <<: "
+                  f"'{type(left_value).__name__}' and "
+                  f"'{type(right_value).__name__}'", line=True)
+
+
+class RShift(Operator):
+    @staticmethod
+    def eval(left, right, env):
+        left_value = left.eval(env)
+        right_value = right.eval(env)
+
+        if hasattr(left_value, '__rshift__'):
+            result = left_value.__rshift__(right_value)
+        else:
+            result = NotImplemented
+
+        if result is not NotImplemented:
+            return result
+
+        if hasattr(right_value, '__rrshift__'):
+            result = right_value.__rrshift__(left_value)
+        else:
+            result = NotImplemented
+
+        if result is not NotImplemented:
+            return result
+        else:
+            throw(left.info, left.token, 'TypeError',
+                  f"unsupported operand type(s) for >>: "
                   f"'{type(left_value).__name__}' and "
                   f"'{type(right_value).__name__}'", line=True)
 
@@ -752,18 +812,140 @@ class If(Ast):
     def __init__(self, test, body, orelse=None):
         self.test = test
         self.body = body
-        if orelse is None:
-            self.orelse = []
-        else:
-            self.orelse = orelse
+        self.orelse = [] if orelse is None else orelse
 
     def eval(self, env):
-        if self.test.eval(env):
+        for stmt in self.body if self.test.eval(env) else self.orelse:
+            if isinstance(stmt, ScopeStmt):
+                return stmt
+
+            result = stmt.eval(env)
+            if isinstance(result, ScopeStmt):
+                return result
+
+
+class While(Ast):
+    def __init__(self, test, body, orelse=None):
+        self.test = test
+        self.body = body
+        self.orelse = [] if orelse is None else orelse
+
+    def eval(self, env):
+        run_orelse = True
+
+        while self.test.eval(env):
             for stmt in self.body:
-                stmt.eval(env)
-        else:
-            for stmt in self.orelse:
-                stmt.eval(env)
+                if isinstance(stmt, Break):
+                    return
+                elif isinstance(stmt, Continue):
+                    break
+
+                result = stmt.eval(env)
+                if isinstance(result, Break):
+                    return
+                elif isinstance(result, Continue):
+                    break
+
+        for stmt in self.orelse:
+            if isinstance(stmt, ScopeStmt):
+                return stmt
+
+            result = stmt.eval(env)
+            if isinstance(result, ScopeStmt):
+                return result
+
+
+class ScopeStmt(Ast):
+    def __init__(self, token):
+        self.token = token
+
+    def eval(self, env):
+        pass
+
+
+class Break(ScopeStmt):
+    pass
+
+
+class Continue(ScopeStmt):
+    pass
+
+
+class FunctionDef(Ast):
+    def __init__(self, name, args=None, body=None):
+        self.name = name
+        self.args = Arguments() if args is None else args
+        self.body = [] if body is None else body
+
+    def eval(self, env):
+        env[self.name] = FunctionType(self.name, self.args, self.body)
+
+
+class Global(Ast):
+    def __init__(self, names):
+        self.names = names
+
+    def eval(self, env):
+        pass
+
+
+class Return(Ast):
+    def __init__(self, value):
+        self.value = value
+
+    def eval(self, env):
+        pass
+
+
+class Nonlocal(Ast):
+    def __init__(self, names):
+        self.names = names
+
+    def eval(self, env):
+        pass
+
+
+# arguments(
+#         posonlyargs = [],
+#         args = [arg(arg='a')],
+#         vararg = arg(arg='args'),
+#         kwonlyargs = [arg(arg='b')],
+#         kw_defaults = [Constant(value=1, kind=None)],
+#         kwarg = arg(arg='kwargs'),
+#         defaults = [],
+#     posonlyargs=[],
+#     args=[
+#         arg(arg='a'),
+#         arg(arg='b'),
+#     ],
+#     vararg=None,
+#     kwonlyargs=[],
+#     kw_defaults=[],
+#     kwarg=None,
+#     defaults=[Constant(value=1, kind=None)],
+# )
+
+class Arg(Ast):
+    def __init__(self, arg):
+        self.arg = arg
+
+
+class Arguments(Ast):
+    def __init__(self, posonlyargs=None, args=None, vararg=None,
+                 kwonlyargs=None, kw_defaults=None, kwarg=None, defaults=None):
+        self.posonlyargs = [] if posonlyargs is None else posonlyargs
+        self.args = [] if args is None else args
+        self.vararg = vararg
+        self.kwonlyargs = [] if kwonlyargs is None else kwonlyargs
+        self.kw_defaults = [] if kw_defaults is None else kw_defaults
+        self.kwarg = kwarg
+        self.defaults = [] if defaults is None else defaults
+
+    def eval(self, env):
+        return ArgumentsType(
+            self.posonlyargs, self.args, self.vararg, self.kwonlyargs,
+            self.kw_defaults, self.kwarg, self.defaults,
+        )
 
 
 class Input(Ast):
@@ -771,10 +953,7 @@ class Input(Ast):
         self.value = value
 
     def eval(self, env):
-        if self.value is None:
-            output = input()
-        else:
-            output = input(self.value.eval(env))
+        output = input() if self.value is None else input(self.value.eval(env))
         return StringType(output)
 
 
