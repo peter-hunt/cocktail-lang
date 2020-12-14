@@ -16,10 +16,10 @@ class Ast(BaseBox):
 
 
 class Module(Ast):
-    def __init__(self, body=None):
+    def __init__(self, body=None, /):
         self.body = [] if body is None else body
 
-    def eval(self):
+    def eval(self, /):
         env = deepcopy(DEFAULT_ENV)
 
         for stmt in self.body:
@@ -27,63 +27,76 @@ class Module(Ast):
                 throw(stmt.info, stmt.token, 'SyntaxError',
                       f"cannot use '{type(stmt).__name__.lower()}'"
                       f" outside loop")
-            stmt.eval(env)
+            stmt.eval(env=env)
 
         return ModuleType(env)
 
 
 class Assign(Ast):
-    def __init__(self, target, value):
+    def __init__(self, target, value, /):
         self.target = target
         self.value = value
 
-    def eval(self, env):
-        value = self.value.eval(env)
-        env[self.target.eval(env).id] = value
+    def eval(self, /, *, env):
+        value = self.value.eval(env=env)
+        env[self.target.eval(env=env).id] = value
         return value
 
 
 class AugAssign(Ast):
-    def __init__(self, target, op, value):
+    def __init__(self, target, op, value, /):
         self.target = target
         self.op = op
         self.value = value
 
-    def eval(self, env):
-        value = self.op.eval(env[self.target.eval(env).id], self.value, env)
-        env[self.target.eval(env).id] = value
+    def eval(self, /, *, env):
+        value = self.op.eval(
+            env[self.target.eval(env=env).id], self.value, env=env)
+        env[self.target.eval(env=env).id] = value
         return value
 
 
+class Construct(Ast):
+    def __init__(self, type, obj=None, /):
+        self.type = type
+        self.obj = obj
+
+    def eval(self, /, *, env):
+        if self.obj is None:
+            return self.type.construct(env=env)
+        else:
+            return self.type.construct(self.obj, env=env)
+
+
 class Expr(Ast):
-    def __init__(self, value):
+    def __init__(self, value, /):
         self.value = value
 
-    def eval(self, env):
-        return self.value.eval(env)
+    def eval(self, /, *, env):
+        return self.value.eval(env=env)
 
 
 class Constant(Ast):
-    def __init__(self, token):
+    def __init__(self, token, /):
         self.token = token
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         return RESERVED[self.token.value]
 
 
 class Number(Ast):
-    def __init__(self, token):
+    def __init__(self, token, /):
         self.token = token
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         return NumberType(float(self.token.value))
 
 
 class String(Ast):
-    def __init__(self, token):
+    def __init__(self, token, /):
         self.token = token
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         return StringType(eval(self.token.value))
 
 
@@ -100,12 +113,12 @@ class Store(ExprFunc):
 
 
 class Name(Ast):
-    def __init__(self, token, ctx):
+    def __init__(self, token, ctx, /):
         self.token = token
         self.id = token.value
         self.ctx = ctx
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         if isinstance(self.ctx, Load):
             if self.id not in env:
                 throw(self.info, self.token, 'NameError',
@@ -116,29 +129,29 @@ class Name(Ast):
 
 
 class BinOp(Ast):
-    def __init__(self, left, op, right):
+    def __init__(self, left, op, right, /):
         self.left = left
         self.op = op
         self.right = right
 
-    def eval(self, env):
-        return self.op.eval(self.left, self.right, env)
+    def eval(self, /, *, env):
+        return self.op.eval(self.left, self.right, env=env)
 
 
 class Operator(Ast):
     @staticmethod
-    def process(value, env):
+    def process(value, /, *, env):
         if isinstance(value, Ast):
-            return value.eval(env)
+            return value.eval(env=env)
         else:
             return value
 
 
 class Add(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__add__'):
             result = left_value.__add__(right_value)
@@ -164,9 +177,9 @@ class Add(Operator):
 
 class Sub(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__sub__'):
             result = left_value.__sub__(right_value)
@@ -192,9 +205,9 @@ class Sub(Operator):
 
 class Mult(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__mul__'):
             result = left_value.__mul__(right_value)
@@ -220,9 +233,9 @@ class Mult(Operator):
 
 class Div(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__truediv__'):
             result = left_value.__truediv__(right_value)
@@ -248,9 +261,9 @@ class Div(Operator):
 
 class FloorDiv(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__floordiv__'):
             result = left_value.__floordiv__(right_value)
@@ -276,9 +289,9 @@ class FloorDiv(Operator):
 
 class Mod(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__mod__'):
             result = left_value.__mod__(right_value)
@@ -304,9 +317,9 @@ class Mod(Operator):
 
 class Pow(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__pow__'):
             result = left_value.__pow__(right_value)
@@ -332,9 +345,9 @@ class Pow(Operator):
 
 class LShift(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__lshift__'):
             result = left_value.__lshift__(right_value)
@@ -360,9 +373,9 @@ class LShift(Operator):
 
 class RShift(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__rshift__'):
             result = left_value.__rshift__(right_value)
@@ -388,9 +401,9 @@ class RShift(Operator):
 
 class BitAnd(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__and__'):
             result = left_value.__and__(right_value)
@@ -416,9 +429,9 @@ class BitAnd(Operator):
 
 class BitXor(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__xor__'):
             result = left_value.__xor__(right_value)
@@ -444,9 +457,9 @@ class BitXor(Operator):
 
 class BitOr(Operator):
     @classmethod
-    def eval(cls, left, right, env):
-        left_value = cls.process(left, env)
-        right_value = cls.process(right, env)
+    def eval(cls, left, right, /, *, env):
+        left_value = cls.process(left, env=env)
+        right_value = cls.process(right, env=env)
 
         if hasattr(left_value, '__or__'):
             result = left_value.__or__(right_value)
@@ -471,12 +484,12 @@ class BitOr(Operator):
 
 
 class UnaryOp(Ast):
-    def __init__(self, op, operand):
+    def __init__(self, op, operand, /):
         self.op = op
         self.operand = operand
 
-    def eval(self, env):
-        return self.op.eval(self.operand, env)
+    def eval(self, /, *, env):
+        return self.op.eval(self.operand, env=env)
 
 
 class UnaryOperator(Ast):
@@ -485,8 +498,8 @@ class UnaryOperator(Ast):
 
 class Invert(UnaryOperator):
     @staticmethod
-    def eval(operand, env):
-        operand_value = operand.eval(env)
+    def eval(operand, /, *, env):
+        operand_value = operand.eval(env=env)
 
         if hasattr(operand_value, '__invert__'):
             return operand_value.__invert__()
@@ -498,8 +511,8 @@ class Invert(UnaryOperator):
 
 class Not(UnaryOperator):
     @staticmethod
-    def eval(operand, env):
-        operand_value = operand.eval(env)
+    def eval(operand, /, *, env):
+        operand_value = operand.eval(env=env)
 
         if hasattr(operand_value, '__bool__'):
             return ~BooleanType(operand_value)
@@ -509,8 +522,8 @@ class Not(UnaryOperator):
 
 class UAdd(UnaryOperator):
     @staticmethod
-    def eval(operand, env):
-        operand_value = operand.eval(env)
+    def eval(operand, /, *, env):
+        operand_value = operand.eval(env=env)
 
         if hasattr(operand_value, '__pos__'):
             return operand_value.__pos__()
@@ -522,8 +535,8 @@ class UAdd(UnaryOperator):
 
 class USub(UnaryOperator):
     @staticmethod
-    def eval(operand, env):
-        operand_value = operand.eval(env)
+    def eval(operand, /, *, env):
+        operand_value = operand.eval(env=env)
 
         if hasattr(operand_value, '__neg__'):
             return operand_value.__neg__()
@@ -534,16 +547,16 @@ class USub(UnaryOperator):
 
 
 class Compare(Ast):
-    def __init__(self, left, ops, comparators):
+    def __init__(self, left, ops, comparators, /):
         self.left = left
         self.ops = ops
         self.comparators = comparators
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         last = self.left
         for index in range(len(self.ops)):
             if not self.ops[index].eval(
-                last, self.comparators[index], env
+                last, self.comparators[index], env=env
             ):
                 return BooleanType(False)
             last = self.comparators[index]
@@ -557,9 +570,9 @@ class CmpOp(Ast):
 
 class Eq(CmpOp):
     @staticmethod
-    def eval(left, right, env):
-        left_value = left.eval(env)
-        right_value = right.eval(env)
+    def eval(left, right, /, *, env):
+        left_value = left.eval(env=env)
+        right_value = right.eval(env=env)
 
         if hasattr(left_value, '__eq__'):
             result = left_value.__eq__(right_value)
@@ -595,9 +608,9 @@ class Eq(CmpOp):
 
 class Gt(CmpOp):
     @staticmethod
-    def eval(left, right, env):
-        left_value = left.eval(env)
-        right_value = right.eval(env)
+    def eval(left, right, /, *, env):
+        left_value = left.eval(env=env)
+        right_value = right.eval(env=env)
 
         if hasattr(left_value, '__gt__'):
             result = left_value.__gt__(right_value)
@@ -633,9 +646,9 @@ class Gt(CmpOp):
 
 class GtE(CmpOp):
     @staticmethod
-    def eval(left, right, env):
-        left_value = left.eval(env)
-        right_value = right.eval(env)
+    def eval(left, right, /, *, env):
+        left_value = left.eval(env=env)
+        right_value = right.eval(env=env)
 
         if hasattr(left_value, '__ge__'):
             result = left_value.__ge__(right_value)
@@ -671,9 +684,9 @@ class GtE(CmpOp):
 
 class In(CmpOp):
     @staticmethod
-    def eval(left, right, env):
-        left_value = left.eval(env)
-        right_value = right.eval(env)
+    def eval(left, right, /, *, env):
+        left_value = left.eval(env=env)
+        right_value = right.eval(env=env)
 
         if hasattr(left_value, '__contains__'):
             return left_value.__contains__(right_value)
@@ -683,27 +696,27 @@ class In(CmpOp):
 
 class Is(CmpOp):
     @staticmethod
-    def eval(left, right, env):
-        left_value = left.eval(env)
-        right_value = right.eval(env)
+    def eval(left, right, /, *, env):
+        left_value = left.eval(env=env)
+        right_value = right.eval(env=env)
 
         return BooleanType(left_value is right_value)
 
 
 class IsNot(CmpOp):
     @staticmethod
-    def eval(left, right, env):
-        left_value = left.eval(env)
-        right_value = right.eval(env)
+    def eval(left, right, /, *, env):
+        left_value = left.eval(env=env)
+        right_value = right.eval(env=env)
 
         return BooleanType(left_value is not right_value)
 
 
 class Lt(CmpOp):
     @staticmethod
-    def eval(left, right, env):
-        left_value = left.eval(env)
-        right_value = right.eval(env)
+    def eval(left, right, /, *, env):
+        left_value = left.eval(env=env)
+        right_value = right.eval(env=env)
 
         if hasattr(left_value, '__lt__'):
             result = left_value.__lt__(right_value)
@@ -739,9 +752,9 @@ class Lt(CmpOp):
 
 class LtE(CmpOp):
     @staticmethod
-    def eval(left, right, env):
-        left_value = left.eval(env)
-        right_value = right.eval(env)
+    def eval(left, right, /, *, env):
+        left_value = left.eval(env=env)
+        right_value = right.eval(env=env)
 
         if hasattr(left_value, '__le__'):
             result = left_value.__le__(right_value)
@@ -777,9 +790,9 @@ class LtE(CmpOp):
 
 class NotEq(CmpOp):
     @staticmethod
-    def eval(left, right, env):
-        left_value = left.eval(env)
-        right_value = right.eval(env)
+    def eval(left, right, /, *, env):
+        left_value = left.eval(env=env)
+        right_value = right.eval(env=env)
 
         if hasattr(left_value, '__ne__'):
             result = left_value.__ne__(right_value)
@@ -815,9 +828,9 @@ class NotEq(CmpOp):
 
 class NotIn(CmpOp):
     @staticmethod
-    def eval(left, right, env):
-        left_value = left.eval(env)
-        right_value = right.eval(env)
+    def eval(left, right, /, *, env):
+        left_value = left.eval(env=env)
+        right_value = right.eval(env=env)
 
         if hasattr(left_value, '__contains__'):
             return ~left_value.__contains__(right_value)
@@ -826,38 +839,38 @@ class NotIn(CmpOp):
 
 
 class If(Ast):
-    def __init__(self, test, body, orelse=None):
+    def __init__(self, test, body, orelse=None, /):
         self.test = test
         self.body = body
         self.orelse = [] if orelse is None else orelse
 
-    def eval(self, env):
-        for stmt in self.body if self.test.eval(env) else self.orelse:
+    def eval(self, /, *, env):
+        for stmt in self.body if self.test.eval(env=env) else self.orelse:
             if isinstance(stmt, ScopeStmt):
                 return stmt
 
-            result = stmt.eval(env)
+            result = stmt.eval(env=env)
             if isinstance(result, ScopeStmt):
                 return result
 
 
 class While(Ast):
-    def __init__(self, test, body, orelse=None):
+    def __init__(self, test, body, orelse=None, /):
         self.test = test
         self.body = body
         self.orelse = [] if orelse is None else orelse
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         run_orelse = True
 
-        while self.test.eval(env):
+        while self.test.eval(env=env):
             for stmt in self.body:
                 if isinstance(stmt, Break):
                     return
                 elif isinstance(stmt, Continue):
                     break
 
-                result = stmt.eval(env)
+                result = stmt.eval(env=env)
                 if isinstance(result, Break):
                     return
                 elif isinstance(result, Continue):
@@ -867,16 +880,16 @@ class While(Ast):
             if isinstance(stmt, ScopeStmt):
                 return stmt
 
-            result = stmt.eval(env)
+            result = stmt.eval(env=env)
             if isinstance(result, ScopeStmt):
                 return result
 
 
 class ScopeStmt(Ast):
-    def __init__(self, token):
+    def __init__(self, token, /):
         self.token = token
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         pass
 
 
@@ -889,36 +902,36 @@ class Continue(ScopeStmt):
 
 
 class FunctionDef(Ast):
-    def __init__(self, name, args=None, body=None):
+    def __init__(self, name, args=None, body=None, /):
         self.name = name
         self.args = Arguments() if args is None else args
         self.body = [] if body is None else body
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         env[self.name] = FunctionType(self.name, self.args, self.body)
 
 
 class Global(Ast):
-    def __init__(self, names):
+    def __init__(self, names, /):
         self.names = names
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         pass
 
 
 class Return(Ast):
-    def __init__(self, value):
+    def __init__(self, value, /):
         self.value = value
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         pass
 
 
 class Nonlocal(Ast):
-    def __init__(self, names):
+    def __init__(self, names, /):
         self.names = names
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         pass
 
 
@@ -943,13 +956,14 @@ class Nonlocal(Ast):
 # )
 
 class Arg(Ast):
-    def __init__(self, arg):
+    def __init__(self, arg, /):
         self.arg = arg
 
 
 class Arguments(Ast):
     def __init__(self, posonlyargs=None, args=None, vararg=None,
-                 kwonlyargs=None, kw_defaults=None, kwarg=None, defaults=None):
+                 kwonlyargs=None, kw_defaults=None, kwarg=None, defaults=None,
+                 /):
         self.posonlyargs = [] if posonlyargs is None else posonlyargs
         self.args = [] if args is None else args
         self.vararg = vararg
@@ -958,7 +972,7 @@ class Arguments(Ast):
         self.kwarg = kwarg
         self.defaults = [] if defaults is None else defaults
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         return ArgumentsType(
             self.posonlyargs, self.args, self.vararg, self.kwonlyargs,
             self.kw_defaults, self.kwarg, self.defaults,
@@ -966,27 +980,27 @@ class Arguments(Ast):
 
 
 class Input(Ast):
-    def __init__(self, prompt=None):
+    def __init__(self, prompt=None, /):
         self.prompt = prompt
 
-    def eval(self, env):
+    def eval(self, /, *, env):
         output = (input() if self.prompt is None
-                  else input(self.prompt.eval(env)))
+                  else input(self.prompt.eval(env=env)))
         return StringType(output)
 
 
 class Print(Ast):
-    def __init__(self, value):
+    def __init__(self, value, /):
         self.value = value
 
-    def eval(self, env):
-        print(self.value.eval(env))
+    def eval(self, /, *, env):
+        print(self.value.eval(env=env))
         return NoneType()
 
 
 class Repr(Ast):
-    def __init__(self, value):
+    def __init__(self, value, /):
         self.value = value
 
-    def eval(self, env):
-        return StringType(f'{self.value.eval(env)!r}')
+    def eval(self, /, *, env):
+        return StringType(f'{self.value.eval(env=env)!r}')

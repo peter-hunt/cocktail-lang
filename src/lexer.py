@@ -139,97 +139,101 @@ UNARY_OP = {
 }
 
 
-class Lexer():
+class Lexer:
     def __init__(self):
         self.lexer = LexerGenerator()
 
-    def _add_tokens(self):
+    def add(self, name, pattern, flags=0):
+        assert name in TOKENS
+        self.lexer.add(name, pattern, flags)
+
+    def add_tokens(self):
         # keywords
-        self.lexer.add('BREAK', r'break')
-        self.lexer.add('CONTINUE', r'continue')
-        self.lexer.add('ELIF', r'elif')
-        self.lexer.add('ELSE', r'else')
-        self.lexer.add('FUNC', r'func')
-        self.lexer.add('IF', r'if')
-        self.lexer.add('IN', r'in')
-        self.lexer.add('NOT', r'not')
-        self.lexer.add('WHILE', r'while')
+        self.add('BREAK', r'break')
+        self.add('CONTINUE', r'continue')
+        self.add('ELIF', r'elif')
+        self.add('ELSE', r'else')
+        self.add('FUNC', r'func')
+        self.add('IF', r'if')
+        self.add('IN', r'in')
+        self.add('NOT', r'not')
+        self.add('WHILE', r'while')
         # Identifiers
-        self.lexer.add('NAME', r'[A-Za-z_]\w*')
+        self.add('NAME', r'[A-Za-z_]\w*')
         # Constants
-        self.lexer.add(
+        self.add(
             'NUMBER',
             (r'\d+(\.(\d+)?)?([Ee][+\-]?\d+)?'
              r'|(\d+)?\.\d+([Ee][+\-]?\d+)?'),
         )
-        self.lexer.add(
+        self.add(
             'STRING',
             (r'"[^"\n\\]*((\\.)*[^"\n\\]*)*(\\.)*"'
              r"|'[^'\n\\]*((\\.)*[^'\n\\]*)*(\\.)*'")
         )
 
         # Parenthesis
-        self.lexer.add('LPAR', r'\(')
-        self.lexer.add('RPAR', r'\)')
+        self.add('LPAR', r'\(')
+        self.add('RPAR', r'\)')
         # Brackets
-        self.lexer.add('LSQB', r'\[')
-        self.lexer.add('RSQB', r'\]')
+        self.add('LSQB', r'\[')
+        self.add('RSQB', r'\]')
         # Braces
-        self.lexer.add('LBRACE', r'\{')
-        self.lexer.add('RBRACE', r'\}')
+        self.add('LBRACE', r'\{')
+        self.add('RBRACE', r'\}')
 
         # Punctuations (Multi-Character)
-        self.lexer.add('ELLIPSIS', r'\.\.\.')
+        self.add('ELLIPSIS', r'\.\.\.')
         # Punctuations
-        self.lexer.add('COMMA', r',')
-        self.lexer.add('DOT', r'\.')
-        self.lexer.add('COLON', r':')
-        self.lexer.add('SEMI', r';')
-        self.lexer.add('RARROW', r'\->')
+        self.add('COMMA', r',')
+        self.add('DOT', r'\.')
+        self.add('COLON', r':')
+        self.add('SEMI', r';')
+        self.add('RARROW', r'\->')
 
         # In-place Operations (Multi-Character)
-        self.lexer.add('DOUBLESLASHEQUAL', r'//=')
-        self.lexer.add('PLUSEQUAL', r'\+=')
-        self.lexer.add('MINUSEQUAL', r'\-=')
-        self.lexer.add('STAREQUAL', r'\*=')
-        self.lexer.add('ATEQUAL', r'@=')
-        self.lexer.add('SLASHEQUAL', r'/=')
-        self.lexer.add('PERCENTEQUAL', r'%=')
-        self.lexer.add('DOUBLESTAREQUAL', r'\*\*=')
-        self.lexer.add('LEFTSHIFTEQUAL', r'<<=')
-        self.lexer.add('RIGHTSHIFTEQUAL', r'>>=')
-        self.lexer.add('AMPEREQUAL', r'&=')
-        self.lexer.add('CIRCUMFLEXEQUAL', r'\^=')
-        self.lexer.add('VBAREQUAL', r'\|=')
+        self.add('DOUBLESLASHEQUAL', r'//=')
+        self.add('PLUSEQUAL', r'\+=')
+        self.add('MINUSEQUAL', r'\-=')
+        self.add('STAREQUAL', r'\*=')
+        self.add('ATEQUAL', r'@=')
+        self.add('SLASHEQUAL', r'/=')
+        self.add('PERCENTEQUAL', r'%=')
+        self.add('DOUBLESTAREQUAL', r'\*\*=')
+        self.add('LEFTSHIFTEQUAL', r'<<=')
+        self.add('RIGHTSHIFTEQUAL', r'>>=')
+        self.add('AMPEREQUAL', r'&=')
+        self.add('CIRCUMFLEXEQUAL', r'\^=')
+        self.add('VBAREQUAL', r'\|=')
         # Comparison Operations (Multi-Character)
-        self.lexer.add('EQEQEQUAL', r'===')
-        self.lexer.add('NOTEQEQEQUAL', r'!==')
-        self.lexer.add('LESSEQUAL', r'<=')
-        self.lexer.add('EQEQUAL', r'==')
-        self.lexer.add('NOTEQUAL', r'!=')
-        self.lexer.add('GREATEREQUAL', r'>=')
+        self.add('EQEQEQUAL', r'===')
+        self.add('NOTEQEQEQUAL', r'!==')
+        self.add('LESSEQUAL', r'<=')
+        self.add('EQEQUAL', r'==')
+        self.add('NOTEQUAL', r'!=')
+        self.add('GREATEREQUAL', r'>=')
         # Mathematical/Bitwise Operations (Multi-Character)
-        self.lexer.add('DOUBLESLASH', r'//')
-        self.lexer.add('DOUBLESTAR', r'\*\*')
-        self.lexer.add('LEFTSHIFT', r'<<')
-        self.lexer.add('RIGHTSHIFT', r'>>')
+        self.add('DOUBLESLASH', r'//')
+        self.add('DOUBLESTAR', r'\*\*')
+        self.add('LEFTSHIFT', r'<<')
+        self.add('RIGHTSHIFT', r'>>')
         # Comparison Operations
-        self.lexer.add('LESS', r'<')
-        self.lexer.add('GREATER', r'>')
+        self.add('LESS', r'<')
+        self.add('GREATER', r'>')
         # Mathematical/Bitwise Operations
-        self.lexer.add('PLUS', r'\+')
-        self.lexer.add('MINUS', r'\-')
-        self.lexer.add('STAR', r'\*')
-        self.lexer.add('AT', r'@')
-        self.lexer.add('SLASH', r'/')
-        self.lexer.add('PERCENT', r'%')
-        self.lexer.add('AMPER', r'&')
-        self.lexer.add('CIRCUMFLEX', r'\^')
-        self.lexer.add('VBAR', r'\|')
+        self.add('PLUS', r'\+')
+        self.add('MINUS', r'\-')
+        self.add('STAR', r'\*')
+        self.add('AT', r'@')
+        self.add('SLASH', r'/')
+        self.add('PERCENT', r'%')
+        self.add('AMPER', r'&')
+        self.add('CIRCUMFLEX', r'\^')
+        self.add('VBAR', r'\|')
         # Unary Operations
-        self.lexer.add('TILDE', r'~')
+        self.add('TILDE', r'~')
         # Assignment Operations
-        self.lexer.add('EQUAL', r'=')
+        self.add('EQUAL', r'=')
 
         # Ignore Spaces
         self.lexer.ignore(r'\s+')
@@ -237,5 +241,5 @@ class Lexer():
         self.lexer.ignore(r'/\*[\s\S]*\*/')
 
     def get_lexer(self):
-        self._add_tokens()
+        self.add_tokens()
         return self.lexer.build()

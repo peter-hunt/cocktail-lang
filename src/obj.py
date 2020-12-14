@@ -1,4 +1,5 @@
 from copy import deepcopy
+from re import match
 
 from .error import throw
 
@@ -9,80 +10,115 @@ class Type:
 
 class ModuleType(Type):
     # ----- Initialization Methods ----- #
-    def __init__(self, env):
+    def __init__(self, env, /):
         self.env = deepcopy(env)
 
     # ----- Informal Methods ----- #
-    def __repr__(self):
+    def __repr__(self, /):
         return f'Module({self.env})'
+
+    # ----- Inner Operations ----- #
+    @classmethod
+    def construct(cls, obj=False, /):
+        throw()
 
 
 class BooleanType(Type):
     # ----- Initialization Methods ----- #
-    def __init__(self, value):
+    def __init__(self, value, /):
         self.value = value
 
     # ----- Informal Methods ----- #
-    def __repr__(self):
+    def __repr__(self, /):
         return 'true' if self.value else 'false'
 
     # ----- Transformation Methods ----- #
-    def __bool__(self):
+    def __hash__(self, /):
+        return hash(self.value)
+
+    def __bool__(self, /):
         return self.value
 
-    def __inv__(self):
+    def __neg__(self, /):
+        return NumberType(-self.value)
+
+    def __pos__(self, /):
+        return NumberType(+self.value)
+
+    def __invert__(self, /):
         return BooleanType(not self.value)
 
     # ----- Bitwise Calculation Methods ----- #
-    def __and__(self, other):
+    def __and__(self, other, /):
         if isinstance(other, NumberType):
-            return NumberType(self.value & other.value)
+            return BooleanType(self.value & other.value)
         else:
             return NotImplemented
 
-    def __or__(self, other):
+    def __or__(self, other, /):
         if isinstance(other, NumberType):
-            return NumberType(self.value | other.value)
+            return BooleanType(self.value | other.value)
         else:
             return NotImplemented
 
-    def __xor__(self, other):
+    def __xor__(self, other, /):
         if isinstance(other, NumberType):
-            return NumberType(self.value ^ other.value)
+            return BooleanType(self.value ^ other.value)
         else:
             return NotImplemented
+
+    # ----- Inner Operations ----- #
+    @classmethod
+    def construct(cls, obj=None, /, *, env):
+        if obj is None:
+            return cls(False)
+        else:
+            return cls(True if obj.eval(env=env) else False)
 
 
 class NoneType(Type):
     # ----- Initialization Methods ----- #
-    def __init__(self):
+    def __init__(self, /):
         pass
 
+    # ----- Transformation Methods ----- #
+    def __hash__(self, /):
+        return hash(None)
+
+    def __bool__(self, /):
+        return False
+
     # ----- Informal Methods ----- #
-    def __repr__(self):
+    def __repr__(self, /):
         return 'none'
 
 
 class NumberType(Type):
     # ----- Initialization Methods ----- #
-    def __init__(self, value):
+    def __init__(self, value, /):
         self.value = value
 
     # ----- Informal Methods ----- #
-    def __repr__(self):
+    def __repr__(self, /):
         if self.value % 1 == 0:
             return f'{self.value:.0f}'
         else:
             return f'{self.value}'
 
     # ----- Transformation Methods ----- #
-    def __neg__(self):
+    def __hash__(self, /):
+        return hash(self.value)
+
+    def __bool__(self, /):
+        return True if self.value else False
+
+    def __neg__(self, /):
         return NumberType(-self.value)
 
-    def __pos__(self):
+    def __pos__(self, /):
         return self
 
-    def __invert__(self):
+    def __invert__(self, /):
         if self.value % 1 == 0:
             return NumberType(~int(self.value))
         else:
@@ -90,86 +126,86 @@ class NumberType(Type):
                   'floats cannot be inverted', line=True)
 
     # ----- Comparison Methods ----- #
-    def __lt__(self, other):
+    def __lt__(self, other, /):
         if isinstance(other, NumberType):
             return BooleanType(self.value < other.value)
         else:
             return NotImplemented
 
-    def __le__(self, other):
+    def __le__(self, other, /):
         if isinstance(other, NumberType):
             return BooleanType(self.value <= other.value)
         else:
             return NotImplemented
 
-    def __eq__(self, other):
+    def __eq__(self, other, /):
         if isinstance(other, NumberType):
             return BooleanType(self.value == other.value)
         else:
             return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other, /):
         if isinstance(other, NumberType):
             return BooleanType(self.value != other.value)
         else:
             return NotImplemented
 
-    def __gt__(self, other):
+    def __gt__(self, other, /):
         if isinstance(other, NumberType):
             return BooleanType(self.value > other.value)
         else:
             return NotImplemented
 
-    def __ge__(self, other):
+    def __ge__(self, other, /):
         if isinstance(other, NumberType):
             return BooleanType(self.value >= other.value)
         else:
             return NotImplemented
 
     # ----- Calculation Methods ----- #
-    def __add__(self, other):
+    def __add__(self, other, /):
         if isinstance(other, NumberType):
             return NumberType(self.value + other.value)
         else:
             return NotImplemented
 
-    def __sub__(self, other):
+    def __sub__(self, other, /):
         if isinstance(other, NumberType):
             return NumberType(self.value - other.value)
         else:
             return NotImplemented
 
-    def __mul__(self, other):
+    def __mul__(self, other, /):
         if isinstance(other, NumberType):
             return NumberType(self.value * other.value)
         else:
             return NotImplemented
 
-    def __truediv__(self, other):
+    def __truediv__(self, other, /):
         if isinstance(other, NumberType):
             return NumberType(self.value / other.value)
         else:
             return NotImplemented
 
-    def __floordiv__(self, other):
+    def __floordiv__(self, other, /):
         if isinstance(other, NumberType):
             return NumberType(self.value // other.value)
         else:
             return NotImplemented
 
-    def __mod__(self, other):
+    def __mod__(self, other, /):
         if isinstance(other, NumberType):
             return NumberType(self.value % other.value)
         else:
             return NotImplemented
 
-    def __pow__(self, other):
+    def __pow__(self, other, /):
         if isinstance(other, NumberType):
             return NumberType(self.value ** other.value)
         else:
             return NotImplemented
 
-    def __lshift__(self, other):
+    def __lshift__(self, other, /):
         if isinstance(other, NumberType):
             if self.value % 1 != 0:
                 throw(self.value.info, self.value.token, 'TypeError',
@@ -181,7 +217,7 @@ class NumberType(Type):
         else:
             return NotImplemented
 
-    def __rshift__(self, other):
+    def __rshift__(self, other, /):
         if isinstance(other, NumberType):
             if self.value % 1 != 0:
                 throw(self.value.info, self.value.token, 'TypeError',
@@ -194,7 +230,7 @@ class NumberType(Type):
             return NotImplemented
 
     # ----- Bitwise Calculation Methods ----- #
-    def __and__(self, other):
+    def __and__(self, other, /):
         if isinstance(other, NumberType):
             if self.value % 1 != 0:
                 throw(self.value.info, self.value.token, 'TypeError',
@@ -206,7 +242,7 @@ class NumberType(Type):
         else:
             return NotImplemented
 
-    def __xor__(self, other):
+    def __xor__(self, other, /):
         if isinstance(other, NumberType):
             if self.value % 1 != 0:
                 throw(self.value.info, self.value.token, 'TypeError',
@@ -218,7 +254,7 @@ class NumberType(Type):
         else:
             return NotImplemented
 
-    def __or__(self, other):
+    def __or__(self, other, /):
         if isinstance(other, NumberType):
             if self.value % 1 != 0:
                 throw(self.value.info, self.value.token, 'TypeError',
@@ -230,54 +266,91 @@ class NumberType(Type):
         else:
             return NotImplemented
 
+    # ----- Inner Operations ----- #
+    @classmethod
+    def construct(cls, obj=None, /, *, env):
+        if obj is None:
+            return cls(0)
+
+        value = obj.eval(env=env)
+
+        if isinstance(value, BooleanType):
+            return cls(+value.value)
+        elif isinstance(value, NumberType):
+            return cls(value.value)
+        elif isinstance(value, StringType):
+            if match(r'^\d+(\.(\d+)?)?([Ee][+\-]?\d+)?'
+                     r'|(\d+)?\.\d+([Ee][+\-]?\d+)?$', value.value):
+                return cls(eval(value.value))
+            else:
+                throw(obj.info, obj.token, 'ValueError',
+                      f"could not convert string to float: {value.value!r}",
+                      line=True)
+        else:
+            throw(obj.info, obj.token, 'ValueError',
+                  f"Number() argument must be a string or a number, "
+                  f"not '{type(value).__name__}'", line=True)
+
 
 class StringType(Type):
     # ----- Initialization Methods ----- #
-    def __init__(self, value):
+    def __init__(self, value, /):
         self.value = value
 
     # ----- Informal Methods ----- #
-    def __repr__(self):
+    def __repr__(self, /):
         return f'{self.value!r}'
 
-    def __str__(self):
+    def __str__(self, /):
         return self.value
 
+    # ----- Transformation Methods ----- #
+    def __hash__(self, /):
+        return hash(self.value)
+
+    def __bool__(self, /):
+        return True if self.value else False
+
     # ----- Calculation Methods ----- #
-    def __add__(self, other):
+    def __add__(self, other, /):
         if isinstance(other, StringType):
             return StringType(self.value + other.value)
         else:
             return NotImplemented
 
-    def __mul__(self, other):
+    def __mul__(self, other, /):
         if isinstance(other, NumberType):
-            return NumberType(self.value * other.value)
+            return StringType(self.value * other.value)
         else:
             return NotImplemented
 
-    def __rmul__(self, other):
+    def __rmul__(self, other, /):
         if isinstance(other, NumberType):
-            return NumberType(self.value * other.value)
+            return StringType(self.value * other.value)
         else:
             return NotImplemented
+
+    # ----- Inner Operations ----- #
+    @classmethod
+    def construct(cls, obj=None, /, *, env):
+        return cls('' if obj is None else f'{obj.eval(env=env)}')
 
 
 class NameType:
     # ----- Initialization Methods ----- #
-    def __init__(self, id):
+    def __init__(self, id, /):
         self.id = id
 
 
 class ArgType:
     # ----- Initialization Methods ----- #
-    def __init__(self, arg):
+    def __init__(self, arg, /):
         self.arg = arg
 
 
 class ArgumentsType:
     # ----- Initialization Methods ----- #
-    def __init__(self, posonlyargs=None, args=None, vararg=None,
+    def __init__(self, /, *, posonlyargs=None, args=None, vararg=None,
                  kwonlyargs=None, kw_defaults=None, kwarg=None, defaults=None):
         self.posonlyargs = [] if posonlyargs is None else posonlyargs
         self.args = [] if args is None else args
@@ -291,40 +364,40 @@ class ArgumentsType:
 
 class FunctionType:
     # ----- Initialization Methods ----- #
-    def __init__(self, name=None, args=None, body=None, qualname=None):
+    def __init__(self, /, *, name=None, args=None, body=None, qualname=None):
         self.name = '<anonymous>' if name is None else name
         self.args = ArgumentsType() if args is None else args
         self.body = [] if body is None else body
         self.qualname = self.name if qualname is None else qualname
 
     # ----- Informal Methods ----- #
-    def __repr__(self):
+    def __repr__(self, /):
         return f'<function {self.name} at {id(self):#x}>'
 
 
 class BuiltinFunctionType:
     # ----- Initialization Methods ----- #
-    def __init__(self):
+    def __init__(self, /):
         self.name = '<anonymous>'
         self.args = ArgumentsType()
 
     # ----- Informal Methods ----- #
-    def __repr__(self):
+    def __repr__(self, /):
         return f'<built-in function {self.name}>'
 
     # ----- Functional Methods ----- #
-    def __call__(self):
+    def __call__(self, /):
         pass
 
 
 class PrintFunction:
     # ----- Initialization Methods ----- #
-    def __init__(self):
+    def __init__(self, /):
         self.name = 'print'
         self.args = ArgumentsType()
 
     # ----- Functional Methods ----- #
-    def __call__(self):
+    def __call__(self, /):
         pass
 
 
@@ -336,4 +409,11 @@ RESERVED = {
 
 DEFAULT_ENV = {
     # 'print': BuiltinFunctionType('print'),
+}
+
+
+CONSTRUCTOR_TYPES = {
+    'Boolean': BooleanType,
+    'Number': NumberType,
+    'String': StringType,
 }

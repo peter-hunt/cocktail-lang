@@ -1,7 +1,7 @@
 from rply import ParserGenerator
 
 from .ast import (
-    Module, Assign, AugAssign, Expr, Constant, Number, String, Name,
+    Module, Assign, AugAssign, Construct, Expr, Constant, Number, String, Name,
     BinOp, UnaryOp, Compare,
     Mult,
     Input, Print, Repr,
@@ -10,7 +10,7 @@ from .ast import (
 )
 from .error import throw
 from .lexer import BIN_OP, INPLACE_OP, UNARY_OP, CMP_OP, TOKENS
-from .obj import RESERVED
+from .obj import RESERVED, CONSTRUCTOR_TYPES
 
 
 def informer(func, info):
@@ -22,7 +22,7 @@ def informer(func, info):
 
 
 class Parser():
-    def __init__(self):
+    def __init__(self, /):
         self.pg = ParserGenerator(
             TOKENS,
             precedence=[
@@ -44,7 +44,7 @@ class Parser():
             ],
         )
 
-    def parse(self, info):
+    def parse(self, info, /):
         @self.pg.production('program :')
         def empty_program(p):
             return Module()
@@ -320,6 +320,14 @@ class Parser():
             elif p[0].value == 'repr':
                 return Repr(*args)
 
+            elif p[0].value in CONSTRUCTOR_TYPES:
+                if len(p) == 3:
+                    return Construct(CONSTRUCTOR_TYPES[p[0].value])
+                elif len(p) == 4:
+                    value = p[2]
+                    value.info = info
+                    return Construct(CONSTRUCTOR_TYPES[p[0].value], value)
+
         @self.pg.production('expr : expr PLUS expr')
         @self.pg.production('expr : expr MINUS expr')
         @self.pg.production('expr : expr STAR expr')
@@ -463,5 +471,5 @@ class Parser():
         def error_handle(token):
             throw(info, token, 'SyntaxError', 'invalid syntax')
 
-    def get_parser(self):
+    def get_parser(self, /):
         return self.pg.build()

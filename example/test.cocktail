@@ -79,6 +79,17 @@ print(not a);
 print(+a);
 print(-a);
 
+
+print('\n# Type Convertions');
+print(Boolean(0));
+print(Boolean(1));
+print(Boolean(true));
+print(Boolean(none));
+print(Number(true));
+print(Number('1'));
+print(repr(String(1)));
+print(repr(String(none)));
+
 a = 1;
 b = -1;
 c = 0;
