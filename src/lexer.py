@@ -243,3 +243,11 @@ class Lexer:
     def get_lexer(self):
         self.add_tokens()
         return self.lexer.build()
+
+
+lexer_generator = Lexer()
+lexer = lexer_generator.get_lexer()
+
+
+def lex(source):
+    return lexer.lex(source)

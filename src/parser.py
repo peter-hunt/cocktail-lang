@@ -21,7 +21,7 @@ def informer(func, info):
     return output
 
 
-class Parser():
+class Parser:
     def __init__(self, /):
         self.pg = ParserGenerator(
             TOKENS,
@@ -44,7 +44,7 @@ class Parser():
             ],
         )
 
-    def parse(self, info, /):
+    def add_syntaxes(self, info, /):
         @self.pg.production('program :')
         def empty_program(p):
             return Module()
@@ -471,5 +471,10 @@ class Parser():
         def error_handle(token):
             throw(info, token, 'SyntaxError', 'invalid syntax')
 
-    def get_parser(self, /):
+    def get_parser(self, /, *, info):
+        self.add_syntaxes(info)
         return self.pg.build()
+
+
+def get_parser(*, info):
+    return Parser().get_parser(info=info)
