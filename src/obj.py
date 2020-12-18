@@ -311,6 +311,10 @@ class StringType(Type):
     def __bool__(self, /):
         return True if self.value else False
 
+    # ----- Iterable Methods ----- #
+    def __iter__(self, /):
+        return iter(self.value)
+
     # ----- Calculation Methods ----- #
     def __add__(self, other, /):
         if isinstance(other, StringType):
@@ -319,13 +323,13 @@ class StringType(Type):
             return NotImplemented
 
     def __mul__(self, other, /):
-        if isinstance(other, NumberType):
+        if isinstance(other, StringType):
             return StringType(self.value * other.value)
         else:
             return NotImplemented
 
     def __rmul__(self, other, /):
-        if isinstance(other, NumberType):
+        if isinstance(other, StringType):
             return StringType(self.value * other.value)
         else:
             return NotImplemented
@@ -336,10 +340,144 @@ class StringType(Type):
         return cls('' if obj is None else f'{obj.eval(env=env)}')
 
 
+class TupleType(Type):
+    # ----- Initialization Methods ----- #
+    def __init__(self, values, /):
+        self.values = values
+
+    # ----- Informal Methods ----- #
+    def __repr__(self, /):
+        return f'{self.values}'
+
+    # ----- Transformation Methods ----- #
+    def __bool__(self, /):
+        return True if self.values else False
+
+    # ----- Iterable Methods ----- #
+    def __len__(self, /):
+        return len(self.values)
+
+    def __getitem__(self, key, /):
+        if isinstance(key, int):
+            return self.values[key]
+        else:
+            slice = []
+            for item in (key.start, key.stop, key.step):
+                if isinstance(item, NumberType):
+                    slice.append(int(item.value))
+                else:
+                    slice.append(None)
+            start, stop, step = slice
+            return self.values[start:stop:step]
+
+    def __iter__(self, /):
+        return iter(self.values)
+
+    def __contains__(self, item, /):
+        return item in self.values
+
+    # ----- Calculation Methods ----- #
+    def __add__(self, other, /):
+        if isinstance(other, TupleType):
+            return TupleType(self.values + other.values)
+        else:
+            return NotImplemented
+
+    def __mul__(self, other, /):
+        if isinstance(other, TupleType):
+            return TupleType(self.values * other.values)
+        else:
+            return NotImplemented
+
+    def __rmul__(self, other, /):
+        if isinstance(other, TupleType):
+            return TupleType(self.values * other.values)
+        else:
+            return NotImplemented
+
+    # ----- Inner Operations ----- #
+    @classmethod
+    def construct(cls, obj=None, /, *, env):
+        return cls(() if obj is None else tuple(obj.eval(env=env)))
+
+
+class ListType(Type):
+    # ----- Initialization Methods ----- #
+    def __init__(self, values, /):
+        self.values = values
+
+    # ----- Informal Methods ----- #
+    def __repr__(self, /):
+        return f'{self.values}'
+
+    # ----- Transformation Methods ----- #
+    def __bool__(self, /):
+        return True if self.values else False
+
+    # ----- Iterable Methods ----- #
+    def __len__(self, /):
+        return len(self.values)
+
+    def __getitem__(self, key, /):
+        if isinstance(key, int):
+            return self.values[key]
+        else:
+            slice = []
+            for item in (key.start, key.stop, key.step):
+                if isinstance(item, NumberType):
+                    slice.append(int(item.value))
+                else:
+                    slice.append(None)
+            start, stop, step = slice
+            return self.values[start:stop:step]
+
+    def __iter__(self, /):
+        return iter(self.values)
+
+    def __contains__(self, item, /):
+        return item in self.values
+
+    # ----- Calculation Methods ----- #
+    def __add__(self, other, /):
+        if isinstance(other, ListType):
+            return ListType(self.values + other.values)
+        else:
+            return NotImplemented
+
+    def __mul__(self, other, /):
+        if isinstance(other, ListType):
+            return ListType(self.values * other.values)
+        else:
+            return NotImplemented
+
+    def __rmul__(self, other, /):
+        if isinstance(other, ListType):
+            return ListType(self.values * other.values)
+        else:
+            return NotImplemented
+
+    # ----- Inner Operations ----- #
+    @classmethod
+    def construct(cls, obj=None, /, *, env):
+        return cls([] if obj is None else [*obj.eval(env=env)])
+
+
 class NameType:
     # ----- Initialization Methods ----- #
     def __init__(self, id, /):
         self.id = id
+
+
+class SliceType:
+    # ----- Initialization Methods ----- #
+    def __init__(self, start, stop, step, /):
+        self.start = start
+        self.stop = stop
+        self.step = step
+
+    # ----- Informal Methods ----- #
+    def __repr__(self, /):
+        return f'SliceType({self.start}, {self.stop}, {self.step})'
 
 
 class ArgType:
@@ -401,10 +539,15 @@ class PrintFunction:
         pass
 
 
+false = BooleanType(False)
+true = BooleanType(True)
+none = NoneType()
+
+
 RESERVED = {
-    'false': BooleanType(False),
-    'true': BooleanType(True),
-    'none': NoneType(),
+    'false': false,
+    'true': true,
+    'none': none,
 }
 
 DEFAULT_ENV = {
@@ -416,4 +559,6 @@ CONSTRUCTOR_TYPES = {
     'Boolean': BooleanType,
     'Number': NumberType,
     'String': StringType,
+    'Tuple': TupleType,
+    'List': ListType,
 }

@@ -1,0 +1,39 @@
+a = 1;
+b = -1;
+c = 0;
+
+print('\n# If Statement');
+if (a > 0) {
+    print('a is positive');
+}
+
+if (b > 0) {
+    print('b is positive');
+} else {
+    print('b is not positive');
+}
+
+if (c > 0) {
+    print('c is positive');
+} elif (c == 0) {
+    print('c is zero');
+} else {
+    print('c is negative');
+}
+
+
+print('\n# While Statement');
+a = 0;
+
+while (a <= 10) {
+    a = a + 1;
+    if (a % 2 == 1) {
+        continue;
+    }
+    print(a);
+    if (a >= 10) {
+        break;
+    }
+} else {
+    print(a);
+}

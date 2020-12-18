@@ -1,16 +1,20 @@
 from rply import ParserGenerator
 
 from .ast import (
-    Module, Assign, AugAssign, Construct, Expr, Constant, Number, String, Name,
+    Module, Assign, AugAssign, Construct, Expr,
+    Constant, Number, String, Tuple, List, Name, Slice,
     BinOp, UnaryOp, Compare,
-    Mult,
-    Input, Print, Repr,
+    Mult, GetItem,
+    Exit, Input, Print, Repr,
     If, While, Break, Continue, FunctionDef, Global, Nonlocal, Arguments, Arg,
     Load, Store,
 )
 from .error import throw
 from .lexer import BIN_OP, INPLACE_OP, UNARY_OP, CMP_OP, TOKENS
-from .obj import RESERVED, CONSTRUCTOR_TYPES
+from .obj import (
+    RESERVED, CONSTRUCTOR_TYPES,
+    none,
+)
 
 
 def informer(func, info):
@@ -307,7 +311,7 @@ class Parser:
 
         @self.pg.production('expr : NAME LPAR RPAR')
         @self.pg.production('expr : NAME LPAR expr RPAR')
-        def function_expr(p):
+        def function_call_expr(p):
             if len(p) == 3:
                 args = ()
             elif len(p) == 4:
@@ -319,6 +323,8 @@ class Parser:
                 return Print(*args)
             elif p[0].value == 'repr':
                 return Repr(*args)
+            elif p[0].value in {'exit', 'quit'}:
+                return Exit(*args)
 
             elif p[0].value in CONSTRUCTOR_TYPES:
                 if len(p) == 3:
@@ -327,6 +333,46 @@ class Parser:
                     value = p[2]
                     value.info = info
                     return Construct(CONSTRUCTOR_TYPES[p[0].value], value)
+
+        @self.pg.production('expr : expr LSQB expr RSQB')
+        def get_item_expr(p):
+            obj = p[0]
+            obj.info = info
+            key = p[2]
+            key.info = info
+            return GetItem(obj, key)
+
+        @self.pg.production('expr : expr LSQB opt_expr COLON opt_expr RSQB')
+        @self.pg.production('expr : expr '
+                            'LSQB opt_expr COLON opt_expr COLON opt_expr RSQB')
+        def get_item_expr(p):
+            obj = p[0]
+            obj.info = info
+            if len(p) == 6:
+                start = p[2]
+                start.info = info
+                stop = p[4]
+                stop.info = info
+                step = none
+                step.info = info
+            else:
+                start = p[2]
+                start.info = info
+                stop = p[4]
+                stop.info = info
+                step = p[6]
+                step.info = info
+            slice = Slice(start, stop, step)
+            slice.info = info
+            return GetItem(obj, slice)
+
+        @self.pg.production('opt_expr : ')
+        @self.pg.production('opt_expr : expr')
+        def optional_expr(p):
+            if p:
+                return p[0]
+            else:
+                return Constant(none)
 
         @self.pg.production('expr : expr PLUS expr')
         @self.pg.production('expr : expr MINUS expr')
@@ -461,6 +507,32 @@ class Parser:
         @self.pg.production('expr : STRING')
         def string(p):
             return String(p[0])
+
+        @self.pg.production('expr : LPAR RPAR')
+        def empty_tuple(p):
+            return Tuple(())
+
+        @self.pg.production('expr : LPAR tuple_expr RPAR')
+        @self.pg.production('expr : LPAR tuple_expr COMMA RPAR')
+        def filled_tuple(p):
+            return p[1]
+
+        @self.pg.production('expr : LSQB RSQB')
+        def empty_list(p):
+            return List([])
+
+        @self.pg.production('expr : LSQB tuple_expr RSQB')
+        @self.pg.production('expr : LSQB tuple_expr COMMA RSQB')
+        def filled_list(p):
+            return List([*p[1].values])
+
+        @self.pg.production('tuple_expr : expr')
+        def single_tuple_expr(p):
+            return Tuple((p[0],))
+
+        @self.pg.production('tuple_expr : tuple_expr COMMA expr')
+        def multiple_tuple_expr(p):
+            return Tuple(p[0].values + (p[2], ))
 
         for name in dir():
             if name == 'self':

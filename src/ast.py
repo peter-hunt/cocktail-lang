@@ -5,9 +5,11 @@ from rply.token import BaseBox, Token
 from .error import throw
 from .obj import (
     Type,
-    ModuleType, BooleanType, NoneType, NumberType, StringType, NameType,
+    ModuleType, BooleanType, NoneType,
+    NumberType, StringType, TupleType, ListType, NameType, SliceType,
     FunctionType, ArgumentsType, ArgType,
     RESERVED, DEFAULT_ENV,
+    none,
 )
 
 
@@ -23,11 +25,15 @@ class Module(Ast):
         env = deepcopy(DEFAULT_ENV)
 
         for stmt in self.body:
-            if isinstance(stmt, ScopeStmt):
+            if isinstance(stmt, ScopeStmt) and not isinstance(stmt, Exit):
                 throw(stmt.info, stmt.token, 'SyntaxError',
                       f"cannot use '{type(stmt).__name__.lower()}'"
                       f" outside loop")
-            stmt.eval(env=env)
+
+            result = stmt.eval(env=env)
+
+            if isinstance(result, Exit):
+                return ModuleType(env)
 
         return ModuleType(env)
 
@@ -50,8 +56,8 @@ class AugAssign(Ast):
         self.value = value
 
     def eval(self, /, *, env):
-        value = self.op.eval(
-            env[self.target.eval(env=env).id], self.value, env=env)
+        value = self.op.eval(env[self.target.eval(env=env).id], self.value,
+                             env=env)
         env[self.target.eval(env=env).id] = value
         return value
 
@@ -98,6 +104,65 @@ class String(Ast):
 
     def eval(self, /, *, env):
         return StringType(eval(self.token.value))
+
+
+class Tuple(Ast):
+    def __init__(self, values, /):
+        self.values = values
+
+    def eval(self, /, *, env):
+        return TupleType(tuple(value.eval(env=env) for value in self.values))
+
+
+class List(Ast):
+    def __init__(self, values, /):
+        self.values = values
+
+    def eval(self, /, *, env):
+        return ListType([value.eval(env=env) for value in self.values])
+
+
+class Slice:
+    def __init__(self, start, stop, step, /):
+        self.start = start
+        self.stop = stop
+        self.step = step
+
+        self.token = start.token
+
+    def eval(self, /, *, env):
+        start = none if self.start is none else self.start.eval(env=env)
+        stop = none if self.stop is none else self.stop.eval(env=env)
+        step = none if self.step is none else self.step.eval(env=env)
+
+        if not isinstance(start, NoneType):
+            if not isinstance(start, NumberType):
+                throw(self.start.info, self.start.token, 'TypeError',
+                      f'Slice indices must be integers, '
+                      f'not {type(start).__name__}', line=True)
+            if start.value % 1 != 0:
+                throw(self.start.info, self.start.token, 'TypeError',
+                      f'Slice indices must be integers, not float', line=True)
+
+        if not isinstance(stop, NoneType):
+            if not isinstance(stop, NumberType):
+                throw(self.stop.info, self.stop.token, 'TypeError',
+                      f'Slice indices must be integers, '
+                      f'not {type(stop).__name__}', line=True)
+            if stop.value % 1 != 0:
+                throw(self.stop.info, self.stop.token, 'TypeError',
+                      f'Slice indices must be integers, not float', line=True)
+
+        if not isinstance(step, NoneType):
+            if not isinstance(step, NumberType):
+                throw(self.step.info, self.step.token, 'TypeError',
+                      f'Slice indices must be integers, '
+                      f'not {type(step).__name__}', line=True)
+            if step.value % 1 != 0:
+                throw(self.step.info, self.step.token, 'TypeError',
+                      f'Slice indices must be integers, not float', line=True)
+
+        return SliceType(start, stop, step)
 
 
 class ExprFunc(Ast):
@@ -838,6 +903,38 @@ class NotIn(CmpOp):
             return BooleanType(False)
 
 
+class GetItem(Ast):
+    def __init__(self, obj, key, /):
+        self.obj = obj
+        self.key = key
+
+    def eval(self, /, *, env):
+        obj = self.obj.eval(env=env)
+        key = self.key.eval(env=env)
+
+        if hasattr(obj, '__getitem__'):
+            if isinstance(key, NumberType):
+                if key.value % 1 != 0:
+                    throw(self.key.info, self.key.token, 'TypeError',
+                          f'{type(obj).__name__} indices must '
+                          f'be integers or slices, not float', line=True)
+                if key.value >= len(obj):
+                    throw(self.key.info, self.key.token, 'IndexError',
+                          f'{type(obj).__name__} index out of range', line=True)
+                return obj[int(key.value)]
+            elif isinstance(key, SliceType):
+                return obj[key]
+            else:
+                throw(self.key.info, self.key.token, 'TypeError',
+                      f'{type(obj).__name__} indices must '
+                      f'be integers or slices, not {type(key).__name__}',
+                      line=True)
+        else:
+            throw(self.obj.info, self.obj.token, 'TypeError',
+                  f"'{type(obj).__name__}' object is not subscriptable",
+                  line=True)
+
+
 class If(Ast):
     def __init__(self, test, body, orelse=None, /):
         self.test = test
@@ -871,10 +968,9 @@ class While(Ast):
                     break
 
                 result = stmt.eval(env=env)
-                if isinstance(result, Break):
-                    return
-                elif isinstance(result, Continue):
-                    break
+
+                if isinstance(result, Exit):
+                    return stmt
 
         for stmt in self.orelse:
             if isinstance(stmt, ScopeStmt):
@@ -899,6 +995,16 @@ class Break(ScopeStmt):
 
 class Continue(ScopeStmt):
     pass
+
+
+class Exit(ScopeStmt):
+    def __init__(self, code=None, /):
+        self.code = code
+
+    def eval(self, /, *, env):
+        if self.code is not None:
+            print(self.code.eval(env=env))
+        return self
 
 
 class FunctionDef(Ast):

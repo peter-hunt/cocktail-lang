@@ -12,6 +12,17 @@ print(true);
 print(false);
 print(none);
 
+print(());
+print((1,));
+print((1, 2));
+print((1, 2)[0]);
+print((1, 2, 3, 4, 5)[1:4]);
+print([]);
+print([3]);
+print([3, 4]);
+print([3, 4][0]);
+print([3, 4, 6, 9, 13][2:4]);
+
 # Variable Declaration
 a = 5;
 b = 2e1;
@@ -89,29 +100,11 @@ print(Number(true));
 print(Number('1'));
 print(repr(String(1)));
 print(repr(String(none)));
-
-a = 1;
-b = -1;
-c = 0;
-
-print('\n# If Statement');
-if (a > 0) {
-    print('a is positive');
-}
-
-if (b > 0) {
-    print('b is positive');
-} else {
-    print('b is not positive');
-}
-
-if (c > 0) {
-    print('c is positive');
-} elif (c == 0) {
-    print('c is zero');
-} else {
-    print('c is negative');
-}
+print(Tuple('12345'));
+print(List('12345'));
+print(List((1, 2, 3, 4)));
+print(Tuple([2, 3, 4, 5]));
+print(List(String(Tuple('py'))));
 
 # # Input
 # text = input('> ');  # BUG
