@@ -1,4 +1,5 @@
-from rply import LexerGenerator
+from rply import LexerGenerator as RplyLexerGenerator
+from rply.lexer import LexerStream, Lexer
 
 from .ast import (
     Add, Sub, Mult, Div, FloorDiv, Mod, Pow, LShift, RShift,
@@ -11,82 +12,107 @@ from .ast import (
 from .obj import BooleanType, NoneType
 
 
-TOKENS = [
-    # Keywords
-    'BREAK',
-    'CONTINUE',
-    'ELIF',
-    'ELSE',
-    'FUNC',
-    'IF',
-    'IN',
-    'NOT',
-    'WHILE',
+__all__ = [
+    'TOKEN_PATTERNS',
+    'IGNORED_PATTERNS',
+    'TOKENS',
+    'BIN_OP',
+    'INPLACE_OP',
+    'CMP_OP',
+    'UNARY_OP',
+    'LexerGenerator',
+    'lexer',
+    'lex',
+]
+
+
+TOKEN_PATTERNS = {
+    # keywords
+    'BREAK': r'break',
+    'CONTINUE': r'continue',
+    'ELIF': r'elif',
+    'ELSE': r'else',
+    'FUNC': r'func',
+    'IF': r'if',
+    'IN': r'in',
+    'NOT': r'not',
+    'WHILE': r'while',
     # Identifiers
-    'NAME',
+    'NAME': r'[A-Za-z_]\w*',
     # Constants
-    'NUMBER',
-    'STRING',
+    'NUMBER': (r'\d+(\.(\d+)?)?([Ee][+\-]?\d+)?'
+               r'|(\d+)?\.\d+([Ee][+\-]?\d+)?'),
+    'STRING': (r'"[^"\n\\]*((\\.)*[^"\n\\]*)*(\\.)*"'
+               r"|'[^'\n\\]*((\\.)*[^'\n\\]*)*(\\.)*'"),
 
     # Parenthesis
-    'LPAR',
-    'RPAR',
+    'LPAR': r'\(', 'RPAR': r'\)',
     # Brackets
-    'LSQB',
-    'RSQB',
+    'LSQB': r'\[', 'RSQB': r'\]',
     # Braces
-    'LBRACE',
-    'RBRACE',
+    'LBRACE': r'\{', 'RBRACE': r'\}',
 
+    # Punctuations (Multi-Character)
+    'ELLIPSIS': r'\.\.\.',
     # Punctuations
-    'COMMA',
-    'DOT',
-    'COLON',
-    'SEMI',
-    'RARROW',
-    'ELLIPSIS',
+    'COMMA': r',',
+    'DOT': r'\.',
+    'COLON': r':',
+    'SEMI': r';',
+    'RARROW': r'\->',
 
+    # In-place Operations (Multi-Character)
+    'DOUBLESLASHEQUAL': r'//=',
+    'PLUSEQUAL': r'\+=',
+    'MINUSEQUAL': r'\-=',
+    'STAREQUAL': r'\*=',
+    'ATEQUAL': r'@=',
+    'SLASHEQUAL': r'/=',
+    'PERCENTEQUAL': r'%=',
+    'DOUBLESTAREQUAL': r'\*\*=',
+    'LEFTSHIFTEQUAL': r'<<=',
+    'RIGHTSHIFTEQUAL': r'>>=',
+    'AMPEREQUAL': r'&=',
+    'CIRCUMFLEXEQUAL': r'\^=',
+    'VBAREQUAL': r'\|=',
+    # Comparison Operations (Multi-Character)
+    'EQEQEQUAL': r'===',
+    'NOTEQEQEQUAL': r'!==',
+    'LESSEQUAL': r'<=',
+    'EQEQUAL': r'==',
+    'NOTEQUAL': r'!=',
+    'GREATEREQUAL': r'>=',
+    # Mathematical/Bitwise Operations (Multi-Character)
+    'DOUBLESLASH': r'//',
+    'DOUBLESTAR': r'\*\*',
+    'LEFTSHIFT': r'<<',
+    'RIGHTSHIFT': r'>>',
     # Comparison Operations
-    'LESS',
-    'LESSEQUAL',
-    'EQEQUAL',
-    'NOTEQUAL',
-    'GREATER',
-    'GREATEREQUAL',
-    'EQEQEQUAL',
-    'NOTEQEQEQUAL',
+    'LESS': r'<',
+    'GREATER': r'>',
     # Mathematical/Bitwise Operations
-    'PLUS',
-    'MINUS',
-    'STAR',
-    'AT',
-    'SLASH',
-    'DOUBLESLASH',
-    'PERCENT',
-    'DOUBLESTAR',
-    'LEFTSHIFT',
-    'RIGHTSHIFT',
-    'AMPER',
-    'CIRCUMFLEX',
-    'VBAR',
+    'PLUS': r'\+',
+    'MINUS': r'\-',
+    'STAR': r'\*',
+    'AT': r'@',
+    'SLASH': r'/',
+    'PERCENT': r'%',
+    'AMPER': r'&',
+    'CIRCUMFLEX': r'\^',
+    'VBAR': r'\|',
     # Unary Operations
-    'TILDE',
-    # In-place Operations
-    'EQUAL',
-    'PLUSEQUAL',
-    'MINUSEQUAL',
-    'STAREQUAL',
-    'ATEQUAL',
-    'SLASHEQUAL',
-    'DOUBLESLASHEQUAL',
-    'PERCENTEQUAL',
-    'DOUBLESTAREQUAL',
-    'LEFTSHIFTEQUAL',
-    'RIGHTSHIFTEQUAL',
-    'AMPEREQUAL',
-    'CIRCUMFLEXEQUAL',
-    'VBAREQUAL',
+    'TILDE': r'~',
+    # Assignment Operations
+    'EQUAL': r'=',
+}
+
+IGNORED_PATTERNS = [
+    r'\s+',
+    r'\#.+\n',
+    r'/\*[\s\S]*\*/',
 ]
+
+TOKENS = [*TOKEN_PATTERNS]
 
 BIN_OP = {
     'PLUS': Add,
@@ -139,115 +165,25 @@ UNARY_OP = {
 }
 
 
-class Lexer:
-    def __init__(self):
-        self.lexer = LexerGenerator()
+class LexerGenerator:
+    def __init__(self, /) -> None:
+        self.lexer = RplyLexerGenerator()
 
-    def add(self, name, pattern, flags=0):
-        assert name in TOKENS
-        self.lexer.add(name, pattern, flags)
+    def add_tokens(self, /) -> None:
+        for name, pattern in TOKEN_PATTERNS.items():
+            self.lexer.add(name, pattern)
 
-    def add_tokens(self):
-        # keywords
-        self.add('BREAK', r'break')
-        self.add('CONTINUE', r'continue')
-        self.add('ELIF', r'elif')
-        self.add('ELSE', r'else')
-        self.add('FUNC', r'func')
-        self.add('IF', r'if')
-        self.add('IN', r'in')
-        self.add('NOT', r'not')
-        self.add('WHILE', r'while')
-        # Identifiers
-        self.add('NAME', r'[A-Za-z_]\w*')
-        # Constants
-        self.add(
-            'NUMBER',
-            (r'\d+(\.(\d+)?)?([Ee][+\-]?\d+)?'
-             r'|(\d+)?\.\d+([Ee][+\-]?\d+)?'),
-        )
-        self.add(
-            'STRING',
-            (r'"[^"\n\\]*((\\.)*[^"\n\\]*)*(\\.)*"'
-             r"|'[^'\n\\]*((\\.)*[^'\n\\]*)*(\\.)*'")
-        )
+        for pattern in IGNORED_PATTERNS:
+            self.lexer.ignore(pattern)
 
-        # Parenthesis
-        self.add('LPAR', r'\(')
-        self.add('RPAR', r'\)')
-        # Brackets
-        self.add('LSQB', r'\[')
-        self.add('RSQB', r'\]')
-        # Braces
-        self.add('LBRACE', r'\{')
-        self.add('RBRACE', r'\}')
-
-        # Punctuations (Multi-Character)
-        self.add('ELLIPSIS', r'\.\.\.')
-        # Punctuations
-        self.add('COMMA', r',')
-        self.add('DOT', r'\.')
-        self.add('COLON', r':')
-        self.add('SEMI', r';')
-        self.add('RARROW', r'\->')
-
-        # In-place Operations (Multi-Character)
-        self.add('DOUBLESLASHEQUAL', r'//=')
-        self.add('PLUSEQUAL', r'\+=')
-        self.add('MINUSEQUAL', r'\-=')
-        self.add('STAREQUAL', r'\*=')
-        self.add('ATEQUAL', r'@=')
-        self.add('SLASHEQUAL', r'/=')
-        self.add('PERCENTEQUAL', r'%=')
-        self.add('DOUBLESTAREQUAL', r'\*\*=')
-        self.add('LEFTSHIFTEQUAL', r'<<=')
-        self.add('RIGHTSHIFTEQUAL', r'>>=')
-        self.add('AMPEREQUAL', r'&=')
-        self.add('CIRCUMFLEXEQUAL', r'\^=')
-        self.add('VBAREQUAL', r'\|=')
-        # Comparison Operations (Multi-Character)
-        self.add('EQEQEQUAL', r'===')
-        self.add('NOTEQEQEQUAL', r'!==')
-        self.add('LESSEQUAL', r'<=')
-        self.add('EQEQUAL', r'==')
-        self.add('NOTEQUAL', r'!=')
-        self.add('GREATEREQUAL', r'>=')
-        # Mathematical/Bitwise Operations (Multi-Character)
-        self.add('DOUBLESLASH', r'//')
-        self.add('DOUBLESTAR', r'\*\*')
-        self.add('LEFTSHIFT', r'<<')
-        self.add('RIGHTSHIFT', r'>>')
-        # Comparison Operations
-        self.add('LESS', r'<')
-        self.add('GREATER', r'>')
-        # Mathematical/Bitwise Operations
-        self.add('PLUS', r'\+')
-        self.add('MINUS', r'\-')
-        self.add('STAR', r'\*')
-        self.add('AT', r'@')
-        self.add('SLASH', r'/')
-        self.add('PERCENT', r'%')
-        self.add('AMPER', r'&')
-        self.add('CIRCUMFLEX', r'\^')
-        self.add('VBAR', r'\|')
-        # Unary Operations
-        self.add('TILDE', r'~')
-        # Assignment Operations
-        self.add('EQUAL', r'=')
-
-        # Ignore Spaces
-        self.lexer.ignore(r'\s+')
-        self.lexer.ignore(r'\#.+\n')
-        self.lexer.ignore(r'/\*[\s\S]*\*/')
-
-    def get_lexer(self):
+    def get_lexer(self, /) -> Lexer:
         self.add_tokens()
         return self.lexer.build()
 
 
-lexer_generator = Lexer()
+lexer_generator = LexerGenerator()
 lexer = lexer_generator.get_lexer()
 
 
-def lex(source):
+def lex(source: str) -> LexerStream:
     return lexer.lex(source)

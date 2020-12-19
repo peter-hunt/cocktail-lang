@@ -1,4 +1,15 @@
-def throw(info, token, error='Error', msg='', *, line=False):
+from rply import Token
+
+from .moduleinfo import ModuleInfo
+
+
+__all__ = [
+    'throw',
+]
+
+
+def throw(info: ModuleInfo, token: Token, error: str = 'Error', msg: str = '',
+          *, line: bool = False) -> None:
     pos = token.getsourcepos()
     source_line = info.source.split('\n')[pos.lineno - 1]
 

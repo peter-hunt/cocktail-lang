@@ -4,6 +4,32 @@ from re import match
 from .error import throw
 
 
+__all__ = [
+    'Type',
+    'ModuleType',
+    'BooleanType',
+    'NoneType',
+    'NumberType',
+    'StringType',
+    'TupleType',
+    'ListType',
+    'NameType',
+    'SliceType',
+    'ArgType',
+    'ArgumentsType',
+    'FunctionType',
+    'BuiltinFunctionType',
+
+    'true',
+    'false',
+    'none',
+
+    'RESERVED',
+    'DEFAULT_ENV',
+    'CONSTRUCTOR_TYPES',
+]
+
+
 class Type:
     pass
 
@@ -16,11 +42,6 @@ class ModuleType(Type):
     # ----- Informal Methods ----- #
     def __repr__(self, /):
         return f'Module({self.env})'
-
-    # ----- Inner Operations ----- #
-    @classmethod
-    def construct(cls, obj=False, /):
-        throw()
 
 
 class BooleanType(Type):
@@ -315,6 +336,9 @@ class StringType(Type):
     def __iter__(self, /):
         return iter(self.value)
 
+    def __contains__(self, item, /):
+        return item.value in self.value
+
     # ----- Calculation Methods ----- #
     def __add__(self, other, /):
         if isinstance(other, StringType):
@@ -462,13 +486,13 @@ class ListType(Type):
         return cls([] if obj is None else [*obj.eval(env=env)])
 
 
-class NameType:
+class NameType(Type):
     # ----- Initialization Methods ----- #
     def __init__(self, id, /):
         self.id = id
 
 
-class SliceType:
+class SliceType(Type):
     # ----- Initialization Methods ----- #
     def __init__(self, start, stop, step, /):
         self.start = start
@@ -480,13 +504,13 @@ class SliceType:
         return f'SliceType({self.start}, {self.stop}, {self.step})'
 
 
-class ArgType:
+class ArgType(Type):
     # ----- Initialization Methods ----- #
     def __init__(self, arg, /):
         self.arg = arg
 
 
-class ArgumentsType:
+class ArgumentsType(Type):
     # ----- Initialization Methods ----- #
     def __init__(self, /, *, posonlyargs=None, args=None, vararg=None,
                  kwonlyargs=None, kw_defaults=None, kwarg=None, defaults=None):
@@ -497,10 +521,9 @@ class ArgumentsType:
         self.kw_defaults = [] if kw_defaults is None else kw_defaults
         self.kwarg = kwarg
         self.defaults = [] if defaults is None else defaults
-        self.body = [] if body is None else body
 
 
-class FunctionType:
+class FunctionType(Type):
     # ----- Initialization Methods ----- #
     def __init__(self, /, *, name=None, args=None, body=None, qualname=None):
         self.name = '<anonymous>' if name is None else name
@@ -510,10 +533,10 @@ class FunctionType:
 
     # ----- Informal Methods ----- #
     def __repr__(self, /):
-        return f'<function {self.name} at {id(self):#x}>'
+        return f'<function {self.qualname} at {id(self):#x}>'
 
 
-class BuiltinFunctionType:
+class BuiltinFunctionType(Type):
     # ----- Initialization Methods ----- #
     def __init__(self, /):
         self.name = '<anonymous>'
@@ -528,7 +551,7 @@ class BuiltinFunctionType:
         pass
 
 
-class PrintFunction:
+class PrintFunction(BuiltinFunctionType):
     # ----- Initialization Methods ----- #
     def __init__(self, /):
         self.name = 'print'

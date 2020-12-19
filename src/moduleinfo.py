@@ -1,4 +1,12 @@
+from dataclasses import dataclass
+
+
+__all__ = [
+    'ModuleInfo',
+]
+
+
+@dataclass
 class ModuleInfo:
-    def __init__(self, source, path='<unknown>'):
-        self.source = source
-        self.path = path
+    source: str
+    path: str = '<unknown>'

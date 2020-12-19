@@ -23,8 +23,10 @@ This project requires Python 3.8
 WARNING: This extension is unstable, read the instructions carefully before installing.
 
 ## More Information
-For more information about the programming language, use the links below:
-- [Tags](tags.md)
+Here're some objectives for the Cocktail Programming Language:
+- Beautiful Code
+- Great Readability and Ease of Understanding
+- Great Performance
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.

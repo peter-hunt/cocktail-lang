@@ -6,9 +6,11 @@ Usage:
   cocktail [options] ... [-c cmd | <file>]
 
 Options:
-  --help -h   Show this help message and exit (also --help)
-  -c cmd      Execute the line of code (also --version)
-  --version -v  Show Cocktail version number and exit (also --version)
+  --ast -a      Parse the file and output the abstract syntax tree
+  -c cmd        Execute the line of code
+  --help -h     Show this help message and exit
+  --lex -l      Lex the file and output the tokens
+  --version -v  Show Cocktail version number and exit
 """
 
 from pathlib import Path
@@ -16,7 +18,11 @@ from pathlib import Path
 from docopt import docopt
 
 from __init__ import __version__
-from src.cocktail import run
+from src.astprint import astprint
+from src.lexer import lex
+from src.run import execute, tokenize
+from src.moduleinfo import ModuleInfo
+from src.parser import get_parser
 
 
 def main():
@@ -34,10 +40,21 @@ def main():
         with open(path) as file:
             source = file.read()
 
-        run(source, path=f'{path}')
+        if args['--lex']:
+            for token in tokenize(source, path=path):
+                print(token)
+        elif args['--ast']:
+            tokens = lex(source)
+
+            parser = get_parser(ModuleInfo(source, f'{path}'))
+            ast = parser.parse(tokens)
+
+            astprint(ast)
+        else:
+            execute(source, path=f'{path}')
 
     elif args['-c'] is not None:
-        run(args['-c'], path='<string>')
+        execute(args['-c'], path='<string>')
 
     else:
         exit(__doc__.split('\n\n')[1].strip())

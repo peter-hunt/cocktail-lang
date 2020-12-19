@@ -1,0 +1,4 @@
+# Input
+text = input('> ');
+print('You entered: ');
+# print(text);

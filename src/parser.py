@@ -1,32 +1,29 @@
-from rply import ParserGenerator
+from re import match
+from warnings import catch_warnings, filterwarnings
 
-from .ast import (
-    Module, Assign, AugAssign, Construct, Expr,
-    Constant, Number, String, Tuple, List, Name, Slice,
-    BinOp, UnaryOp, Compare,
-    Mult, GetItem,
-    Exit, Input, Print, Repr,
-    If, While, Break, Continue, FunctionDef, Global, Nonlocal, Arguments, Arg,
-    Load, Store,
-)
+from rply.errors import LexingError, ParserGeneratorWarning
+from rply.parser import LRParser
+from rply.parsergenerator import ParserGenerator
+
+from .ast import *
 from .error import throw
-from .lexer import BIN_OP, INPLACE_OP, UNARY_OP, CMP_OP, TOKENS
+from .lexer import lex, BIN_OP, INPLACE_OP, UNARY_OP, CMP_OP, TOKENS
+from .moduleinfo import ModuleInfo
 from .obj import (
     RESERVED, CONSTRUCTOR_TYPES,
     none,
 )
 
 
-def informer(func, info):
-    def output(*args, **kwargs):
-        node = func(*args, **kwargs)
-        node.info = info
-        return node
-    return output
+__all__ = [
+    'Parser',
+    'get_parser',
+    'parse',
+]
 
 
 class Parser:
-    def __init__(self, /):
+    def __init__(self, /) -> None:
         self.pg = ParserGenerator(
             TOKENS,
             precedence=[
@@ -48,7 +45,7 @@ class Parser:
             ],
         )
 
-    def add_syntaxes(self, info, /):
+    def add_syntaxes(self, info: ModuleInfo, /) -> None:
         @self.pg.production('program :')
         def empty_program(p):
             return Module()
@@ -143,13 +140,11 @@ class Parser:
         @self.pg.production('break_stmt : BREAK')
         def break_stmt(p):
             result = Break(p[0])
-            result.info = info
             return result
 
         @self.pg.production('continue_stmt : CONTINUE')
         def continue_stmt(p):
             result = Continue(p[0])
-            result.info = info
             return result
 
         @self.pg.production(
@@ -298,7 +293,6 @@ class Parser:
                 throw(info, p[0], 'SyntaxError',
                       f'cannot assign to {p[0].value}')
             name = Name(p[0], Store())
-            name.info = info
             return Assign(name, p[2])
 
         @self.pg.production('expr : LPAR expr RPAR')
@@ -310,61 +304,35 @@ class Parser:
             return BinOp(Number(p[0]), Mult, p[2])
 
         @self.pg.production('expr : NAME LPAR RPAR')
-        @self.pg.production('expr : NAME LPAR expr RPAR')
+        @self.pg.production('expr : NAME LPAR tuple_expr RPAR')
         def function_call_expr(p):
             if len(p) == 3:
                 args = ()
-            elif len(p) == 4:
-                args = (p[2],)
+            else:
+                args = p[2].values
 
             if p[0].value == 'input':
-                return Input(*args)
+                return Input(args)
             elif p[0].value == 'print':
-                return Print(*args)
+                return Print(args)
             elif p[0].value == 'repr':
-                return Repr(*args)
+                return Repr(args)
             elif p[0].value in {'exit', 'quit'}:
-                return Exit(*args)
+                return Exit(args)
 
             elif p[0].value in CONSTRUCTOR_TYPES:
-                if len(p) == 3:
-                    return Construct(CONSTRUCTOR_TYPES[p[0].value])
-                elif len(p) == 4:
-                    value = p[2]
-                    value.info = info
-                    return Construct(CONSTRUCTOR_TYPES[p[0].value], value)
+                return Construct(CONSTRUCTOR_TYPES[p[0].value], args)
 
         @self.pg.production('expr : expr LSQB expr RSQB')
         def get_item_expr(p):
-            obj = p[0]
-            obj.info = info
-            key = p[2]
-            key.info = info
-            return GetItem(obj, key)
+            return GetItem(p[0], p[2])
 
         @self.pg.production('expr : expr LSQB opt_expr COLON opt_expr RSQB')
         @self.pg.production('expr : expr '
                             'LSQB opt_expr COLON opt_expr COLON opt_expr RSQB')
         def get_item_expr(p):
-            obj = p[0]
-            obj.info = info
-            if len(p) == 6:
-                start = p[2]
-                start.info = info
-                stop = p[4]
-                stop.info = info
-                step = none
-                step.info = info
-            else:
-                start = p[2]
-                start.info = info
-                stop = p[4]
-                stop.info = info
-                step = p[6]
-                step.info = info
-            slice = Slice(start, stop, step)
-            slice.info = info
-            return GetItem(obj, slice)
+            slice = Slice(p[2], p[4], none if len(p) == 6 else p[6])
+            return GetItem(p[0], slice)
 
         @self.pg.production('opt_expr : ')
         @self.pg.production('opt_expr : expr')
@@ -387,12 +355,7 @@ class Parser:
         @self.pg.production('expr : expr CIRCUMFLEX expr')
         @self.pg.production('expr : expr VBAR expr')
         def binop_expr(p):
-            left, op, right = p
-            bin_op = BIN_OP[op.gettokentype()]()
-            bin_op.info = info
-            left.info = info
-            right.info = info
-            return BinOp(left, bin_op, right)
+            return BinOp(p[0], BIN_OP[p[1].gettokentype()](), p[2])
 
         @self.pg.production('expr : NAME PLUSEQUAL expr')
         @self.pg.production('expr : NAME MINUSEQUAL expr')
@@ -407,38 +370,31 @@ class Parser:
         @self.pg.production('expr : NAME CIRCUMFLEXEQUAL expr')
         @self.pg.production('expr : NAME VBAREQUAL expr')
         def inplace_assign_expr(p):
-            name, op, value = p
-            if name.value in RESERVED:
+            if p[0].value in RESERVED:
                 throw(info, name, 'SyntaxError',
                       f"'{name.value}' is an illegal expression "
                       f"for augmented assignment")
 
-            name = Name(name, Store())
-            name.info = info
-            bin_op = INPLACE_OP[op.gettokentype()]()
-            bin_op.info = info
-            value.info = info
-            return AugAssign(name, bin_op, value)
+            return AugAssign(
+                Name(p[0], Store()),
+                INPLACE_OP[p[1].gettokentype()](),
+                p[2],
+            )
 
         @self.pg.production('expr : NUMBER NAME')
         def variable_multiplication(p):
-            if p[1].value in RESERVED:
-                name = Constant(p[1])
-            else:
-                name = Name(p[1], Load())
-            name.info = info
-            return BinOp(Number(p[0]), Mult, name)
+            return BinOp(
+                Number(p[0]), Mult,
+                Constant(p[1]) if p[1].value in RESERVED
+                else Name(p[1], Load()),
+            )
 
         @self.pg.production('expr : TILDE expr', precedence='INVERT')
         @self.pg.production('expr : NOT expr')
         @self.pg.production('expr : PLUS expr', precedence='UADD')
         @self.pg.production('expr : MINUS expr', precedence='USUB')
         def unaryop_expr(p):
-            op, operand = p
-            unary_op = UNARY_OP[op.gettokentype()]()
-            unary_op.info = info
-            operand.info = info
-            return UnaryOp(unary_op, operand)
+            return UnaryOp(UNARY_OP[p[0].gettokentype()](), p[1])
 
         @self.pg.production('expr : cmp_expr')
         def cmp_expr_escape(p):
@@ -463,42 +419,34 @@ class Parser:
         @self.pg.production('cmp_expr : cmp_expr NOTEQEQEQUAL expr')
         @self.pg.production('cmp_expr : cmp_expr IN expr')
         def cmp_expr(p):
-            left, op, right = p
-            cmp_op = CMP_OP[op.gettokentype()]()
-            cmp_op.info = info
-            left.info = info
-            right.info = info
+            left = p[0]
+            cmp_op = CMP_OP[p[1].gettokentype()]()
             if isinstance(left, Compare):
                 return Compare(
-                    left, left.ops + [cmp_op], left.comparators + [right]
+                    left, left.ops + [cmp_op], left.comparators + [p[2]]
                 )
             else:
-                return Compare(left, [cmp_op], [right])
+                return Compare(left, [cmp_op], [p[2]])
 
         @self.pg.production('cmp_expr : expr NOT IN expr',
                             precedence='NOTIN')
         @self.pg.production('cmp_expr : cmp_expr NOT IN expr',
                             precedence='NOTIN')
         def multi_cmp_expr(p):
-            left, *ops, right = p
-            cmp_op = CMP_OP[tuple(op.gettokentype() for op in ops)]
-            cmp_op.info = info
-            left.info = info
-            right.info = info
-            if isinstance(left, Compare):
+            left = p[0]
+            cmp_op = CMP_OP[tuple(op.gettokentype() for op in p[1:-1])]
+            if isinstance(p[0], Compare):
                 return Compare(
-                    left, left.ops + [cmp_op], left.comparators + [right]
+                    left, left.ops + [cmp_op], left.comparators + [p[-1]]
                 )
             else:
-                return Compare(left, [cmp_op], [right])
+                return Compare(left, [cmp_op], [p[-1]])
 
         @self.pg.production('expr : NAME')
         def constant(p):
             if p[0].value in RESERVED:
                 return Constant(p[0])
-            name = Name(p[0], Load())
-            name.info = info
-            return name
+            return Name(p[0], Load())
 
         @self.pg.production('expr : NUMBER')
         def number(p):
@@ -534,19 +482,91 @@ class Parser:
         def multiple_tuple_expr(p):
             return Tuple(p[0].values + (p[2], ))
 
-        for name in dir():
-            if name == 'self':
-                continue
-            locals()[name] = informer(locals()[name], info)
-
         @self.pg.error
         def error_handle(token):
             throw(info, token, 'SyntaxError', 'invalid syntax')
 
-    def get_parser(self, /, *, info):
+    def get_parser(self, info: ModuleInfo, /) -> LRParser:
         self.add_syntaxes(info)
         return self.pg.build()
 
 
-def get_parser(*, info):
-    return Parser().get_parser(info=info)
+def get_parser(info: ModuleInfo, /, *, log: str = 'default') -> LRParser:
+    if log == 'full':
+        return Parser().get_parser(info)
+    elif log == 'default':
+        with catch_warnings(record=True) as warnings:
+            parser = Parser().get_parser(info)
+
+            warning_unused = True
+            unused_tokens = []
+
+            for warning in warnings:
+                if warning.category is not ParserGeneratorWarning:
+                    continue
+
+                if warning_unused and (result := match(
+                    r"^Token '(.+)' is unused$", f'{warning.message}'
+                )):
+                    unused_tokens.append(result.group(1))
+                else:
+                    if warning_unused:
+                        warning_unused = False
+                        if len(unused_tokens) == 1:
+                            print(f"\x1b[91mParserGeneratorWarning: "
+                                  f"Token '{unused_tokens}' is unused\x1b[0m")
+                        elif len(unused_tokens) > 1:
+                            token_string = ', '.join(
+                                f"'{token}'" for token in unused_tokens
+                            )
+                            print(f"\x1b[91mParserGeneratorWarning: "
+                                  f"Token {token_string} are unused\x1b[0m")
+                    print(f'\x1b[91mParserGeneratorWarning: '
+                          f'{warning.message}\x1b[0m')
+
+        return parser
+    elif log == 'none':
+        with catch_warnings():
+            return Parser().get_parser(info)
+    else:
+        raise ValueError(f"param log must be 'full', 'default', or 'none', "
+                         f"not {log!r}")
+
+
+def informed(node: Ast, info: ModuleInfo) -> Ast:
+    node.info = info
+    for field in node._fields:
+        value = getattr(node, field)
+        if isinstance(value, Ast):
+            setattr(node, field, informed(value, info))
+        elif isinstance(value, list):
+            setattr(node, field, [informed(item, info) for item in value])
+        elif isinstance(value, tuple):
+            setattr(node, field, tuple(informed(item, info) for item in value))
+    return node
+
+
+def parse(source: str, *, path: str = '<unknown>',
+          parser_getter=None) -> Module:
+    tokens = lex(source)
+
+    info = ModuleInfo(source, path)
+
+    parser = (parser_getter or get_parser)(info)
+
+    try:
+        module = parser.parse(tokens)
+    except LexingError as err:
+        index = err.source_pos.idx
+        lineno = source[:index].count('\n')
+        line = source.split('\n')[lineno]
+        if '\n' in source[:index]:
+            padding = (index - source[:index].rfind('\n')) * ' '
+        else:
+            padding = index * ' '
+        exit(f'  File "{path}", line {lineno + 1}\n'
+             f'    {line}\n'
+             f'   {padding}^\n'
+             f'SyntaxError: invalid syntax')
+
+    return informed(module, info)

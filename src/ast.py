@@ -1,25 +1,79 @@
+from builtins import type as builtin_type
 from copy import deepcopy
+from dataclasses import dataclass, field
+from typing import List as TypingList, Tuple as TypingTuple, Union
 
 from rply.token import BaseBox, Token
 
 from .error import throw
-from .obj import (
-    Type,
-    ModuleType, BooleanType, NoneType,
-    NumberType, StringType, TupleType, ListType, NameType, SliceType,
-    FunctionType, ArgumentsType, ArgType,
-    RESERVED, DEFAULT_ENV,
-    none,
-)
+from .obj import *
+
+
+__all__ = [
+    'Ast',
+
+    'Module',
+
+    'Assign',
+    'AugAssign',
+    'Construct',
+
+    'Expr',
+    'Constant',
+    'Number',
+    'String',
+    'Tuple',
+    'List',
+    'Slice',
+
+    'ExprContent',
+    'Load',
+    'Store',
+
+    'Name',
+
+    'BinOp',
+    'Operator',
+    'Add', 'Sub', 'Mult', 'Div', 'FloorDiv', 'Mod', 'Pow', 'LShift', 'RShift',
+    'BitAnd', 'BitXor', 'BitOr',
+
+    'UnaryOp',
+    'UnaryOperator',
+    'Invert', 'Not', 'UAdd', 'USub',
+
+    'Compare',
+    'CmpOp',
+    'Eq', 'Gt', 'GtE', 'In', 'Is', 'IsNot', 'Lt', 'LtE', 'NotEq', 'NotIn',
+
+    'GetItem',
+    'If', 'While',
+
+    'ScopeStmt',
+    'Break', 'Continue', 'Exit',
+
+    'FunctionDef',
+    'Global', 'Return', 'Nonlocal',
+    'Arg', 'Arguments',
+    'Input', 'Print', 'Repr',
+]
 
 
 class Ast(BaseBox):
+    _fields = ()
     info = None
 
 
+Name = type('Name', (Ast,), {})
+Operator = type('Operator', (Ast,), {})
+UnaryOperator = type('UnaryOperator', (Ast,), {})
+CmpOp = type('CmpOp', (Ast,), {})
+Arguments = type('Arguments', (Ast,), {})
+
+
+@dataclass
 class Module(Ast):
-    def __init__(self, body=None, /):
-        self.body = [] if body is None else body
+    _fields = ('body',)
+    body: list = field(default_factory=list)
 
     def eval(self, /):
         env = deepcopy(DEFAULT_ENV)
@@ -38,10 +92,11 @@ class Module(Ast):
         return ModuleType(env)
 
 
+@dataclass
 class Assign(Ast):
-    def __init__(self, target, value, /):
-        self.target = target
-        self.value = value
+    _fields = ('target', 'value')
+    target: Name
+    value: Ast
 
     def eval(self, /, *, env):
         value = self.value.eval(env=env)
@@ -49,11 +104,12 @@ class Assign(Ast):
         return value
 
 
+@dataclass
 class AugAssign(Ast):
-    def __init__(self, target, op, value, /):
-        self.target = target
-        self.op = op
-        self.value = value
+    _fields = ('target', 'op', 'value')
+    target: Name
+    op: Operator
+    value: Ast
 
     def eval(self, /, *, env):
         value = self.op.eval(env[self.target.eval(env=env).id], self.value,
@@ -62,67 +118,77 @@ class AugAssign(Ast):
         return value
 
 
+@dataclass
 class Construct(Ast):
-    def __init__(self, type, obj=None, /):
-        self.type = type
-        self.obj = obj
+    _fields = ('type', 'obj')
+    type: builtin_type
+    args: TypingTuple[Ast]
 
     def eval(self, /, *, env):
-        if self.obj is None:
-            return self.type.construct(env=env)
-        else:
-            return self.type.construct(self.obj, env=env)
+        return self.type.construct(*self.args, env=env)
 
 
+@dataclass
 class Expr(Ast):
-    def __init__(self, value, /):
-        self.value = value
+    _fields = ('value',)
+    value: Ast
 
     def eval(self, /, *, env):
         return self.value.eval(env=env)
 
 
+@dataclass
 class Constant(Ast):
-    def __init__(self, token, /):
-        self.token = token
+    _fields = ('token',)
+    token: Token
 
     def eval(self, /, *, env):
         return RESERVED[self.token.value]
 
 
+@dataclass
 class Number(Ast):
-    def __init__(self, token, /):
-        self.token = token
+    _fields = ('token',)
+    token: Token
 
     def eval(self, /, *, env):
         return NumberType(float(self.token.value))
 
 
+@dataclass
 class String(Ast):
-    def __init__(self, token, /):
-        self.token = token
+    _fields = ('token',)
+    token: Token
 
     def eval(self, /, *, env):
         return StringType(eval(self.token.value))
 
 
+@dataclass
 class Tuple(Ast):
-    def __init__(self, values, /):
-        self.values = values
+    _fields = ('values',)
+    values: tuple
 
     def eval(self, /, *, env):
         return TupleType(tuple(value.eval(env=env) for value in self.values))
 
 
+@dataclass
 class List(Ast):
-    def __init__(self, values, /):
-        self.values = values
+    _fields = ('values',)
+    values: list
 
     def eval(self, /, *, env):
         return ListType([value.eval(env=env) for value in self.values])
 
 
-class Slice:
+@dataclass
+class Slice(Ast):
+    _fields = ('start', 'stop', 'step')
+    start: Ast
+    stop: Ast
+    step: Ast
+
     def __init__(self, start, stop, step, /):
         self.start = start
         self.stop = stop
@@ -165,19 +231,27 @@ class Slice:
         return SliceType(start, stop, step)
 
 
-class ExprFunc(Ast):
+@dataclass
+class ExprContent(Ast):
     pass
 
 
-class Load(ExprFunc):
+@dataclass
+class Load(ExprContent):
     pass
 
 
-class Store(ExprFunc):
+@dataclass
+class Store(ExprContent):
     pass
 
 
+@dataclass
 class Name(Ast):
+    _fields = ('token', 'id', 'ctx')
+    token: Token
+    ctx: ExprContent
+
     def __init__(self, token, ctx, /):
         self.token = token
         self.id = token.value
@@ -193,16 +267,18 @@ class Name(Ast):
             return NameType(self.id)
 
 
+@dataclass
 class BinOp(Ast):
-    def __init__(self, left, op, right, /):
-        self.left = left
-        self.op = op
-        self.right = right
+    _fields = ('left', 'op', 'right')
+    left: Ast
+    op: Operator
+    right: Ast
 
     def eval(self, /, *, env):
         return self.op.eval(self.left, self.right, env=env)
 
 
+@dataclass
 class Operator(Ast):
     @staticmethod
     def process(value, /, *, env):
@@ -212,26 +288,20 @@ class Operator(Ast):
             return value
 
 
+@dataclass
 class Add(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__add__'):
-            result = left_value.__add__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__add__') and
+                (result := left_value.__add__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__radd__'):
-            result = right_value.__radd__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__radd__') and
+                (result := right_value.__radd__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -240,26 +310,20 @@ class Add(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class Sub(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__sub__'):
-            result = left_value.__sub__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__sub__') and
+                (result := left_value.__sub__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__rsub__'):
-            result = right_value.__rsub__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__rsub__') and
+                (result := right_value.__rsub__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -268,26 +332,20 @@ class Sub(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class Mult(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__mul__'):
-            result = left_value.__mul__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__mul__') and
+                (result := left_value.__mul__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__rmul__'):
-            result = right_value.__rmul__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__rmul__') and
+                (result := right_value.__rmul__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -296,26 +354,20 @@ class Mult(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class Div(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__truediv__'):
-            result = left_value.__truediv__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__truediv__') and
+                (result := left_value.__truediv__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__rtruediv__'):
-            result = right_value.__rtruediv__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__rtruediv__') and
+                (result := right_value.__rtruediv__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -324,26 +376,20 @@ class Div(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class FloorDiv(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__floordiv__'):
-            result = left_value.__floordiv__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__floordiv__') and
+                (result := left_value.__floordiv__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__rfloordiv__'):
-            result = right_value.__rfloordiv__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__rfloordiv__') and
+                (result := right_value.__rfloordiv__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -352,26 +398,20 @@ class FloorDiv(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class Mod(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__mod__'):
-            result = left_value.__mod__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__mod__') and
+                (result := left_value.__mod__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__rmod__'):
-            result = right_value.__rmod__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__rmod__') and
+                (result := right_value.__rmod__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -380,26 +420,20 @@ class Mod(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class Pow(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__pow__'):
-            result = left_value.__pow__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__pow__') and
+                (result := left_value.__pow__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__rpow__'):
-            result = right_value.__rpow__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__rpow__') and
+                (result := right_value.__rpow__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -408,26 +442,20 @@ class Pow(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class LShift(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__lshift__'):
-            result = left_value.__lshift__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__lshift__') and
+                (result := left_value.__lshift__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__rlshift__'):
-            result = right_value.__rlshift__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__rlshift__') and
+                (result := right_value.__rlshift__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -436,26 +464,20 @@ class LShift(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class RShift(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__rshift__'):
-            result = left_value.__rshift__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__rshift__') and
+                (result := left_value.__rshift__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__rrshift__'):
-            result = right_value.__rrshift__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__rrshift__') and
+                (result := right_value.__rrshift__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -464,26 +486,20 @@ class RShift(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class BitAnd(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__and__'):
-            result = left_value.__and__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__and__') and
+                (result := left_value.__and__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__rand__'):
-            result = right_value.__rand__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__rand__') and
+                (result := right_value.__rand__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -492,26 +508,20 @@ class BitAnd(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class BitXor(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__xor__'):
-            result = left_value.__xor__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__xor__') and
+                (result := left_value.__xor__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__rxor__'):
-            result = right_value.__rxor__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__rxor__') and
+                (result := right_value.__rxor__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -520,26 +530,20 @@ class BitXor(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class BitOr(Operator):
     @classmethod
     def eval(cls, left, right, /, *, env):
         left_value = cls.process(left, env=env)
         right_value = cls.process(right, env=env)
 
-        if hasattr(left_value, '__or__'):
-            result = left_value.__or__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__or__') and
+                (result := left_value.__or__(right_value))
+                is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__ror__'):
-            result = right_value.__ror__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__ror__') and
+                (result := right_value.__ror__(left_value))
+              is not NotImplemented):
             return result
         else:
             throw(left.info, left.token, 'TypeError',
@@ -548,19 +552,21 @@ class BitOr(Operator):
                   f"'{type(right_value).__name__}'", line=True)
 
 
+@dataclass
 class UnaryOp(Ast):
-    def __init__(self, op, operand, /):
-        self.op = op
-        self.operand = operand
+    op: UnaryOperator
+    operand: Ast
 
     def eval(self, /, *, env):
         return self.op.eval(self.operand, env=env)
 
 
+@dataclass
 class UnaryOperator(Ast):
     pass
 
 
+@dataclass
 class Invert(UnaryOperator):
     @staticmethod
     def eval(operand, /, *, env):
@@ -574,6 +580,7 @@ class Invert(UnaryOperator):
                   f"'{type(operand_value).__name__}'", line=True)
 
 
+@dataclass
 class Not(UnaryOperator):
     @staticmethod
     def eval(operand, /, *, env):
@@ -585,6 +592,7 @@ class Not(UnaryOperator):
             return BooleanType(False)
 
 
+@dataclass
 class UAdd(UnaryOperator):
     @staticmethod
     def eval(operand, /, *, env):
@@ -593,11 +601,12 @@ class UAdd(UnaryOperator):
         if hasattr(operand_value, '__pos__'):
             return operand_value.__pos__()
         else:
-            throw(left.info, left.token, 'TypeError',
+            throw(operand.info, operand.token, 'TypeError',
                   f"bad operand type for unary +: "
-                  f"'{type(left_value).__name__}'", line=True)
+                  f"'{type(operand_value).__name__}'", line=True)
 
 
+@dataclass
 class USub(UnaryOperator):
     @staticmethod
     def eval(operand, /, *, env):
@@ -606,16 +615,16 @@ class USub(UnaryOperator):
         if hasattr(operand_value, '__neg__'):
             return operand_value.__neg__()
         else:
-            throw(left.info, left.token, 'TypeError',
+            throw(operand.info, operand.token, 'TypeError',
                   f"bad operand type for unary -: "
-                  f"'{type(left_value).__name__}'", line=True)
+                  f"'{type(operand_value).__name__}'", line=True)
 
 
+@dataclass
 class Compare(Ast):
-    def __init__(self, left, ops, comparators, /):
-        self.left = left
-        self.ops = ops
-        self.comparators = comparators
+    left: Ast
+    ops: TypingList[CmpOp]
+    comparators: TypingList[Ast]
 
     def eval(self, /, *, env):
         last = self.left
@@ -629,281 +638,227 @@ class Compare(Ast):
         return BooleanType(True)
 
 
+@dataclass
 class CmpOp(Ast):
     pass
 
 
+@dataclass
 class Eq(CmpOp):
     @staticmethod
     def eval(left, right, /, *, env):
         left_value = left.eval(env=env)
         right_value = right.eval(env=env)
 
-        if hasattr(left_value, '__eq__'):
-            result = left_value.__eq__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__eq__') and (result := left_value.__eq__(
+                right_value)) is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__eq__'):
-            result = right_value.__eq__(left_value)
-        else:
-            result = NotImplemented
-
-        if hasattr(left_value, '__ne__'):
-            result = left_value.__ne__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__eq__') and (result := right_value.__eq__(
+                left_value)) is not NotImplemented):
+            return result
+        elif (hasattr(left_value, '__ne__') and (result := left_value.__ne__(
+                right_value)) is not NotImplemented):
             return ~result
-
-        if hasattr(right_value, '__ne_'):
-            result = right_value.__ne__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__ne__') and (result := right_value.__ne__(
+                left_value)) is not NotImplemented):
             return ~result
         else:
-            return BooleanType(False)
+            throw(left.info, left.token, 'TypeError',
+                  f"'==' not supported between '{type(left_value).__name__}' "
+                  f"and '{type(right_value).__name__}'")
 
 
+@dataclass
 class Gt(CmpOp):
     @staticmethod
     def eval(left, right, /, *, env):
         left_value = left.eval(env=env)
         right_value = right.eval(env=env)
 
-        if hasattr(left_value, '__gt__'):
-            result = left_value.__gt__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__gt__') and (result := left_value.__gt__(
+                right_value)) is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__le__'):
-            result = right_value.__le__(left_value)
-        else:
-            result = NotImplemented
-
-        if hasattr(left_value, '__le__'):
-            result = left_value.__le__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__le__') and (result := right_value.__le__(
+                left_value)) is not NotImplemented):
+            return result
+        elif (hasattr(left_value, '__le__') and (result := left_value.__le__(
+                right_value)) is not NotImplemented):
             return ~result
-
-        if hasattr(right_value, '__gt_'):
-            result = right_value.__gt__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__gt__') and (result := right_value.__gt__(
+                left_value)) is not NotImplemented):
             return ~result
         else:
-            return BooleanType(False)
+            throw(left.info, left.token, 'TypeError',
+                  f"'>' not supported between '{type(left_value).__name__}' "
+                  f"and '{type(right_value).__name__}'")
 
 
+@dataclass
 class GtE(CmpOp):
     @staticmethod
     def eval(left, right, /, *, env):
         left_value = left.eval(env=env)
         right_value = right.eval(env=env)
 
-        if hasattr(left_value, '__ge__'):
-            result = left_value.__ge__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__ge__') and (result := left_value.__ge__(
+                right_value)) is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__lt__'):
-            result = right_value.__lt__(left_value)
-        else:
-            result = NotImplemented
-
-        if hasattr(left_value, '__lt__'):
-            result = left_value.__lt__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__lt__') and (result := right_value.__lt__(
+                left_value)) is not NotImplemented):
+            return result
+        elif (hasattr(left_value, '__lt__') and (result := left_value.__lt__(
+                right_value)) is not NotImplemented):
             return ~result
-
-        if hasattr(right_value, '__ge_'):
-            result = right_value.__ge__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__ge__') and (result := right_value.__ge__(
+                left_value)) is not NotImplemented):
             return ~result
         else:
-            return BooleanType(False)
+            throw(left.info, left.token, 'TypeError',
+                  f"'>=' not supported between '{type(left_value).__name__}' "
+                  f"and '{type(right_value).__name__}'")
 
 
+@dataclass
 class In(CmpOp):
     @staticmethod
     def eval(left, right, /, *, env):
         left_value = left.eval(env=env)
         right_value = right.eval(env=env)
 
-        if hasattr(left_value, '__contains__'):
-            return left_value.__contains__(right_value)
+        if hasattr(right_value, '__contains__'):
+            if isinstance(right_value, StringType):
+                if isinstance(left_value, StringType):
+                    return right_value.__contains__(left_value)
+                else:
+                    throw(left.info, left.token, 'TypeError',
+                          f"'in <StringType>' requires StringType "
+                          f"as left operand, not {type(left_value).__name__}",
+                          line=True)
+            else:
+                return right_value.__contains__(left_value)
         else:
-            return BooleanType(False)
+            throw(right.info, right.token, 'TypeError',
+                  f"argument of type '{type(right_value).__name__}' "
+                  f"is not iterable", line=True)
 
 
+@dataclass
 class Is(CmpOp):
     @staticmethod
     def eval(left, right, /, *, env):
-        left_value = left.eval(env=env)
-        right_value = right.eval(env=env)
-
-        return BooleanType(left_value is right_value)
+        return BooleanType(left.eval(env=env) is right.eval(env=env))
 
 
+@dataclass
 class IsNot(CmpOp):
     @staticmethod
     def eval(left, right, /, *, env):
-        left_value = left.eval(env=env)
-        right_value = right.eval(env=env)
-
-        return BooleanType(left_value is not right_value)
+        return BooleanType(left.eval(env=env) is not right.eval(env=env))
 
 
+@dataclass
 class Lt(CmpOp):
     @staticmethod
     def eval(left, right, /, *, env):
         left_value = left.eval(env=env)
         right_value = right.eval(env=env)
 
-        if hasattr(left_value, '__lt__'):
-            result = left_value.__lt__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__lt__') and (result := left_value.__lt__(
+                right_value)) is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__ge__'):
-            result = right_value.__ge__(left_value)
-        else:
-            result = NotImplemented
-
-        if hasattr(left_value, '__ge__'):
-            result = left_value.__ge__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__ge__') and (result := right_value.__ge__(
+                left_value)) is not NotImplemented):
+            return result
+        elif (hasattr(left_value, '__ge__') and (result := left_value.__ge__(
+                right_value)) is not NotImplemented):
             return ~result
-
-        if hasattr(right_value, '__lt_'):
-            result = right_value.__lt__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__lt__') and (result := right_value.__lt__(
+                left_value)) is not NotImplemented):
             return ~result
         else:
-            return BooleanType(False)
+            throw(left.info, left.token, 'TypeError',
+                  f"'<' not supported between '{type(left_value).__name__}' "
+                  f"and '{type(right_value).__name__}'")
 
 
+@dataclass
 class LtE(CmpOp):
     @staticmethod
     def eval(left, right, /, *, env):
         left_value = left.eval(env=env)
         right_value = right.eval(env=env)
 
-        if hasattr(left_value, '__le__'):
-            result = left_value.__le__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__le__') and (result := left_value.__le__(
+                right_value)) is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__gt__'):
-            result = right_value.__gt__(left_value)
-        else:
-            result = NotImplemented
-
-        if hasattr(left_value, '__gt__'):
-            result = left_value.__gt__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__gt__') and (result := right_value.__gt__(
+                left_value)) is not NotImplemented):
+            return result
+        elif (hasattr(left_value, '__gt__') and (result := left_value.__gt__(
+                right_value)) is not NotImplemented):
             return ~result
-
-        if hasattr(right_value, '__le__'):
-            result = right_value.__le__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__le__') and (result := right_value.__le__(
+                left_value)) is not NotImplemented):
             return ~result
         else:
-            return BooleanType(False)
+            throw(left.info, left.token, 'TypeError',
+                  f"'<=' not supported between '{type(left_value).__name__}' "
+                  f"and '{type(right_value).__name__}'")
 
 
+@dataclass
 class NotEq(CmpOp):
     @staticmethod
     def eval(left, right, /, *, env):
         left_value = left.eval(env=env)
         right_value = right.eval(env=env)
 
-        if hasattr(left_value, '__ne__'):
-            result = left_value.__ne__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        if (hasattr(left_value, '__ne__') and (result := left_value.__ne__(
+                right_value)) is not NotImplemented):
             return result
-
-        if hasattr(right_value, '__ne__'):
-            result = right_value.__ne__(left_value)
-        else:
-            result = NotImplemented
-
-        if hasattr(left_value, '__eq__'):
-            result = left_value.__eq__(right_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__ne__') and (result := right_value.__ne__(
+                left_value)) is not NotImplemented):
+            return result
+        elif (hasattr(left_value, '__eq__') and (result := left_value.__eq__(
+                right_value)) is not NotImplemented):
             return ~result
-
-        if hasattr(right_value, '__eq__'):
-            result = right_value.__eq__(left_value)
-        else:
-            result = NotImplemented
-
-        if result is not NotImplemented:
+        elif (hasattr(right_value, '__eq__') and (result := right_value.__eq__(
+                left_value)) is not NotImplemented):
             return ~result
         else:
-            return BooleanType(False)
+            throw(left.info, left.token, 'TypeError',
+                  f"'!=' not supported between '{type(left_value).__name__}' "
+                  f"and '{type(right_value).__name__}'")
 
 
+@dataclass
 class NotIn(CmpOp):
     @staticmethod
     def eval(left, right, /, *, env):
         left_value = left.eval(env=env)
         right_value = right.eval(env=env)
 
-        if hasattr(left_value, '__contains__'):
-            return ~left_value.__contains__(right_value)
+        if hasattr(right_value, '__contains__'):
+            if isinstance(right_value, StringType):
+                if isinstance(left_value, StringType):
+                    return ~right_value.__contains__(left_value)
+                else:
+                    throw(left.info, left.token, 'TypeError',
+                          f"'not in <StringType>' requires StringType "
+                          f"as left operand, not {type(left_value).__name__}",
+                          line=True)
+            else:
+                return ~right_value.__contains__(left_value)
         else:
-            return BooleanType(False)
+            throw(right.info, right.token, 'TypeError',
+                  f"argument of type '{type(right_value).__name__}' "
+                  f"is not iterable", line=True)
 
 
+@dataclass
 class GetItem(Ast):
+    _fields = ('obj', 'key')
+
     def __init__(self, obj, key, /):
         self.obj = obj
         self.key = key
@@ -935,11 +890,12 @@ class GetItem(Ast):
                   line=True)
 
 
+@dataclass
 class If(Ast):
-    def __init__(self, test, body, orelse=None, /):
-        self.test = test
-        self.body = body
-        self.orelse = [] if orelse is None else orelse
+    _fields = ('test', 'body', 'orelse')
+    test: Ast
+    body: TypingList[Ast]
+    orelse: TypingList[Ast] = field(default_factory=list)
 
     def eval(self, /, *, env):
         for stmt in self.body if self.test.eval(env=env) else self.orelse:
@@ -951,11 +907,12 @@ class If(Ast):
                 return result
 
 
+@dataclass
 class While(Ast):
-    def __init__(self, test, body, orelse=None, /):
-        self.test = test
-        self.body = body
-        self.orelse = [] if orelse is None else orelse
+    _fields = ('test', 'body', 'orelse')
+    test: Ast
+    body: TypingList[Ast]
+    orelse: TypingList[Ast] = field(default_factory=list)
 
     def eval(self, /, *, env):
         run_orelse = True
@@ -981,61 +938,58 @@ class While(Ast):
                 return result
 
 
+@dataclass
 class ScopeStmt(Ast):
-    def __init__(self, token, /):
-        self.token = token
+    _fields = ('token',)
+    token: Token
 
     def eval(self, /, *, env):
         pass
 
 
+@dataclass
 class Break(ScopeStmt):
     pass
 
 
+@dataclass
 class Continue(ScopeStmt):
     pass
 
 
-class Exit(ScopeStmt):
-    def __init__(self, code=None, /):
-        self.code = code
-
-    def eval(self, /, *, env):
-        if self.code is not None:
-            print(self.code.eval(env=env))
-        return self
-
-
+@dataclass
 class FunctionDef(Ast):
-    def __init__(self, name, args=None, body=None, /):
-        self.name = name
-        self.args = Arguments() if args is None else args
-        self.body = [] if body is None else body
+    _fields = ('name', 'args', 'body')
+    name: str
+    args: Arguments = field(default_factory=Arguments)
+    body: list = field(default_factory=list)
 
     def eval(self, /, *, env):
         env[self.name] = FunctionType(self.name, self.args, self.body)
 
 
+@dataclass
 class Global(Ast):
-    def __init__(self, names, /):
-        self.names = names
+    _fields = ('names',)
+    names: TypingList[Name]
 
     def eval(self, /, *, env):
         pass
 
 
+@dataclass
 class Return(Ast):
-    def __init__(self, value, /):
-        self.value = value
+    _fields = ('value',)
+    value: Ast
 
     def eval(self, /, *, env):
         pass
 
 
+@dataclass
 class Nonlocal(Ast):
-    def __init__(self, names, /):
-        self.names = names
+    _fields = ('names',)
+    names: TypingList[Name]
 
     def eval(self, /, *, env):
         pass
@@ -1061,22 +1015,23 @@ class Nonlocal(Ast):
 #     defaults=[Constant(value=1, kind=None)],
 # )
 
+@dataclass
 class Arg(Ast):
-    def __init__(self, arg, /):
-        self.arg = arg
+    _fields = ('arg',)
+    arg: str
 
 
+@dataclass
 class Arguments(Ast):
-    def __init__(self, posonlyargs=None, args=None, vararg=None,
-                 kwonlyargs=None, kw_defaults=None, kwarg=None, defaults=None,
-                 /):
-        self.posonlyargs = [] if posonlyargs is None else posonlyargs
-        self.args = [] if args is None else args
-        self.vararg = vararg
-        self.kwonlyargs = [] if kwonlyargs is None else kwonlyargs
-        self.kw_defaults = [] if kw_defaults is None else kw_defaults
-        self.kwarg = kwarg
-        self.defaults = [] if defaults is None else defaults
+    _fields = ('posonlyargs', 'args', 'vararg',
+               'kwonlyargs', 'kw_defaults', 'kwarg', 'defaults')
+    posonlyargs: list = field(default_factory=list)
+    args: list = field(default_factory=list)
+    vararg: Union[Arg, None] = None
+    kwonlyargs: list = field(default_factory=list)
+    kw_defaults: list = field(default_factory=list)
+    kwarg: Union[Arg, None] = None
+    defaults: list = field(default_factory=list)
 
     def eval(self, /, *, env):
         return ArgumentsType(
@@ -1085,28 +1040,48 @@ class Arguments(Ast):
         )
 
 
-class Input(Ast):
-    def __init__(self, prompt=None, /):
-        self.prompt = prompt
+@dataclass
+class BuiltinFunction(Ast):
+    _fields = ()
+    args: TypingTuple[Ast] = field(default_factory=list)
+
+
+@dataclass
+class Exit(BuiltinFunction, ScopeStmt):
+    _fields = ('code',)
+    args: Union[Ast, None]
 
     def eval(self, /, *, env):
-        output = (input() if self.prompt is None
-                  else input(self.prompt.eval(env=env)))
-        return StringType(output)
+        if self.code is not None:
+            print(self.code.eval(env=env))
+        return self
 
 
-class Print(Ast):
-    def __init__(self, value, /):
-        self.value = value
-
+@dataclass
+class Input(BuiltinFunction):
     def eval(self, /, *, env):
-        print(self.value.eval(env=env))
-        return NoneType()
+        if len(self.args) > 1:
+            throw(self.args[0].info, self.args[0].token, 'TypeError',
+                  f'input excepted at most 1 argument, got {len(self.args)}',
+                  line=True)
+
+        return StringType(input() if not self.args
+                          else input(self.args[0].eval(env=env)))
 
 
-class Repr(Ast):
-    def __init__(self, value, /):
-        self.value = value
-
+@dataclass
+class Print(BuiltinFunction):
     def eval(self, /, *, env):
-        return StringType(f'{self.value.eval(env=env)!r}')
+        print(' '.join(f'{value.eval(env=env)}' for value in self.args))
+        return none
+
+
+@dataclass
+class Repr(BuiltinFunction):
+    def eval(self, /, *, env):
+        if len(self.args) > 1:
+            throw(self.args[0].info, self.args[0].token, 'TypeError',
+                  f'repr excepted at most 1 argument, got {len(self.args)}',
+                  line=True)
+
+        return StringType(f'{self.args[0].eval(env=env)!r}')
