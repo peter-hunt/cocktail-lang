@@ -7,7 +7,12 @@ from rply.parsergenerator import ParserGenerator
 
 from .ast import *
 from .error import throw
-from .lexer import lex, BIN_OP, INPLACE_OP, UNARY_OP, CMP_OP, TOKENS
+from .lexer import (
+    lex,
+    BIN_OP, INPLACE_OP, UNARY_OP, CMP_OP,
+    POST_INPLACE_UNARY_OP, PRE_INPLACE_UNARY_OP,
+    TOKENS,
+)
 from .moduleinfo import ModuleInfo
 from .obj import (
     RESERVED, CONSTRUCTOR_TYPES,
@@ -58,6 +63,7 @@ class Parser:
         @self.pg.production('program : if_else_stmt program')
         @self.pg.production('program : if_elif_stmt program')
         @self.pg.production('program : func_def program')
+        @self.pg.production('program : for_stmt program')
         @self.pg.production('program : while_stmt program')
         def merge_stmt_to_program(p):
             return Module([p[0], *p[1].body])
@@ -115,6 +121,13 @@ class Parser:
         )
         def elif_else_stmt(p):
             return If(p[2], p[5].body, p[7])
+
+        @self.pg.production(
+            'for_stmt : FOR LPAR opt_expr SEMI opt_expr SEMI opt_expr RPAR'
+            '           LBRACE program RBRACE'
+        )
+        def for_stmt(p):
+            return For(p[2], p[4], p[6], p[9].body)
 
         @self.pg.production(
             'while_stmt : WHILE LPAR expr RPAR LBRACE program RBRACE'
@@ -275,16 +288,20 @@ class Parser:
         def single_arg_expr(p):
             return [[Arg(p[0].value)], [None]]
 
-        @self.pg.production('kwargs : NAME EQUAL expr COMMA kwargs')
+        @self.pg.production('kwargs : assignment COMMA kwargs')
         def keyword_args_expr(p):
-            return [[Arg(p[0].value), *p[4][0]], [p[2], *p[4][1]]]
+            return [[Arg(p[0].target.id), *p[4][0]], [p[0].value, *p[4][1]]]
 
-        @self.pg.production('kwargs : NAME EQUAL expr')
+        @self.pg.production('kwargs : assignment')
         def single_keyword_arg_expr(p):
-            return [[Arg(p[0].value)], [p[2]]]
+            return [[Arg(p[0].target.id)], [p[0].value]]
 
-        @self.pg.production('expr : NAME EQUAL expr')
-        def assignment_expr(p):
+        @self.pg.production('expr : assignment')
+        def assignment_as_expr(p):
+            return p[0]
+
+        @self.pg.production('assignment : NAME EQUAL expr')
+        def assignment(p):
             if p[0].value in RESERVED:
                 throw(info, p[0], 'SyntaxError',
                       f'cannot assign to {p[0].value}')
@@ -375,6 +392,34 @@ class Parser:
                 Name(p[0], Store()),
                 INPLACE_OP[p[1].gettokentype()](),
                 p[2],
+            )
+
+        @self.pg.production('expr : NAME PLUSPLUS')
+        @self.pg.production('expr : NAME MINUSMINUS')
+        def inplace_unary_expr(p):
+            if p[0].value in RESERVED:
+                throw(info, name, 'SyntaxError',
+                      f"'{name.value}' is an illegal expression "
+                      f"for inplace unary operation")
+
+            return InplaceUnaryOp(
+                Name(p[0], Load()),
+                Name(p[0], Store()),
+                POST_INPLACE_UNARY_OP[p[1].gettokentype()](),
+            )
+
+        @self.pg.production('expr : PLUSPLUS NAME')
+        @self.pg.production('expr : MINUSMINUS NAME')
+        def inplace_unary_expr(p):
+            if p[1].value in RESERVED:
+                throw(info, name, 'SyntaxError',
+                      f"'{name.value}' is an illegal expression "
+                      f"for inplace unary operation")
+
+            return InplaceUnaryOp(
+                Name(p[1], Load()),
+                Name(p[1], Store()),
+                PRE_INPLACE_UNARY_OP[p[0].gettokentype()](),
             )
 
         @self.pg.production('expr : NUMBER NAME')

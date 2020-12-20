@@ -41,12 +41,16 @@ __all__ = [
     'UnaryOperator',
     'Invert', 'Not', 'UAdd', 'USub',
 
+    'InplaceUnaryOp',
+    'InplaceUnaryOperator',
+    'PostIncrement', 'PostDecrement', 'PreIncrement', 'PreDecrement',
+
     'Compare',
     'CmpOp',
     'Eq', 'Gt', 'GtE', 'In', 'Is', 'IsNot', 'Lt', 'LtE', 'NotEq', 'NotIn',
 
     'GetItem',
-    'If', 'While',
+    'If', 'For', 'While',
 
     'ScopeStmt',
     'Break', 'Continue', 'Exit',
@@ -66,6 +70,7 @@ class Ast(BaseBox):
 Name = type('Name', (Ast,), {})
 Operator = type('Operator', (Ast,), {})
 UnaryOperator = type('UnaryOperator', (Ast,), {})
+InplaceUnaryOperator = type('InplaceUnaryOperator', (Ast,), {})
 CmpOp = type('CmpOp', (Ast,), {})
 Arguments = type('Arguments', (Ast,), {})
 
@@ -621,6 +626,105 @@ class USub(UnaryOperator):
 
 
 @dataclass
+class InplaceUnaryOp(Ast):
+    source: Name
+    target: Name
+    op: InplaceUnaryOperator
+
+    def eval(self, /, *, env):
+        return self.op.eval(self.source, self.target, env=env)
+
+
+@dataclass
+class InplaceUnaryOperator(Ast):
+    pass
+
+
+@dataclass
+class PostIncrement(InplaceUnaryOperator):
+    @staticmethod
+    def eval(source, target, /, *, env):
+        source_value = source.eval(env=env)
+        one = NumberType(1)
+
+        if (hasattr(source_value, '__add__') and
+                (result := source_value.__add__(one))
+                is not NotImplemented):
+            env[target.eval(env=env).id] = result
+            return source_value
+        elif (result := one.__radd__(source_value)) is not NotImplemented:
+            env[target.eval(env=env).id] = result
+            return source_value
+        else:
+            throw(source.info, source.token, 'TypeError',
+                  f"bad operand type for unary ++: "
+                  f"'{type(source_value).__name__}'", line=True)
+
+
+@dataclass
+class PostDecrement(InplaceUnaryOperator):
+    @staticmethod
+    def eval(source, target, /, *, env):
+        source_value = source.eval(env=env)
+        one = NumberType(1)
+
+        if (hasattr(source_value, '__sub__') and
+                (result := source_value.__sub__(one))
+                is not NotImplemented):
+            env[target.eval(env=env).id] = result
+            return source_value
+        elif (result := one.__rsub__(source_value)) is not NotImplemented:
+            env[target.eval(env=env).id] = result
+            return source_value
+        else:
+            throw(source.info, source.token, 'TypeError',
+                  f"bad operand type for unary --: "
+                  f"'{type(source_value).__name__}'", line=True)
+
+
+@dataclass
+class PreIncrement(InplaceUnaryOperator):
+    @staticmethod
+    def eval(source, target, /, *, env):
+        source_value = source.eval(env=env)
+        one = NumberType(1)
+
+        if (hasattr(source_value, '__add__') and
+                (result := source_value.__add__(one))
+                is not NotImplemented):
+            env[target.eval(env=env).id] = result
+            return result
+        elif (result := one.__radd__(source_value)) is not NotImplemented:
+            env[target.eval(env=env).id] = result
+            return result
+        else:
+            throw(source.info, source.token, 'TypeError',
+                  f"bad operand type for unary ++: "
+                  f"'{type(source_value).__name__}'", line=True)
+
+
+@dataclass
+class PreDecrement(InplaceUnaryOperator):
+    @staticmethod
+    def eval(source, target, /, *, env):
+        source_value = source.eval(env=env)
+        one = NumberType(1)
+
+        if (hasattr(source_value, '__sub__') and
+                (result := source_value.__sub__(one))
+                is not NotImplemented):
+            env[target.eval(env=env).id] = result
+            return result
+        elif (result := one.__rsub__(source_value)) is not NotImplemented:
+            env[target.eval(env=env).id] = result
+            return result
+        else:
+            throw(source.info, source.token, 'TypeError',
+                  f"bad operand type for unary --: "
+                  f"'{type(source_value).__name__}'", line=True)
+
+
+@dataclass
 class Compare(Ast):
     left: Ast
     ops: TypingList[CmpOp]
@@ -905,6 +1009,32 @@ class If(Ast):
             result = stmt.eval(env=env)
             if isinstance(result, ScopeStmt):
                 return result
+
+
+@dataclass
+class For(Ast):
+    _fields = ('init', 'cond', 'loop', 'body')
+    init: Ast
+    cond: Ast
+    loop: Ast
+    body: TypingList[Ast]
+
+    def eval(self, /, *, env):
+        self.init.eval(env=env)
+
+        while self.cond.eval(env=env):
+            for stmt in self.body:
+                if isinstance(stmt, Break):
+                    return
+                elif isinstance(stmt, Continue):
+                    break
+
+                result = stmt.eval(env=env)
+
+                if isinstance(result, Exit):
+                    return stmt
+
+            self.loop.eval(env=env)
 
 
 @dataclass

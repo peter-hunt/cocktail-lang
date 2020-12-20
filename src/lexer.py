@@ -10,6 +10,9 @@ from .ast import (
     Lt, LtE, Eq, NotEq, Gt, GtE, Is, IsNot, In, NotIn,
 
     Invert, Not, UAdd, USub,
+
+    PostIncrement, PostDecrement,
+    PreIncrement, PreDecrement,
 )
 from .obj import BooleanType, NoneType
 
@@ -28,85 +31,88 @@ __all__ = [
 ]
 
 
-TOKEN_PATTERNS = {
-    # keywords
-    'BREAK': r'break',
-    'CONTINUE': r'continue',
-    'ELIF': r'elif',
-    'ELSE': r'else',
-    'FUNC': r'func',
-    'IF': r'if',
-    'IN': r'in',
-    'NOT': r'not',
-    'WHILE': r'while',
+RESERVED_KEYWORD = [
+    'break', 'continue', 'elif', 'else',
+    'func', 'for', 'if', 'in', 'not', 'while'
+]
+
+
+TOKEN_PATTERNS = [
     # Identifiers
-    'NAME': r'[A-Za-z_]\w*',
+    ('NAME', r'[A-Za-z_]\w*'),
     # Constants
-    'NUMBER': (r'\d+(\.(\d+)?)?([Ee][+\-]?\d+)?'
-               r'|(\d+)?\.\d+([Ee][+\-]?\d+)?'),
-    'STRING': (r'"[^"\n\\]*((\\.)*[^"\n\\]*)*(\\.)*"'
-               r"|'[^'\n\\]*((\\.)*[^'\n\\]*)*(\\.)*'"),
+    ('NUMBER', (r'\d+(\.(\d+)?)?([Ee][+\-]?\d+)?'
+                r'|(\d+)?\.\d+([Ee][+\-]?\d+)?')),
+    ('STRING', (r'[Rr]?"[^"\n\\]*((\\.)*[^"\n\\]*)*(\\.)*"'
+                r"|'[^'\n\\]*((\\.)*[^'\n\\]*)*(\\.)*'")),
 
     # Parenthesis
-    'LPAR': r'\(', 'RPAR': r'\)',
+    ('LPAR', r'\('), ('RPAR', r'\)'),
     # Brackets
-    'LSQB': r'\[', 'RSQB': r'\]',
+    ('LSQB', r'\['), ('RSQB', r'\]'),
     # Braces
-    'LBRACE': r'\{', 'RBRACE': r'\}',
+    ('LBRACE', r'\{'), ('RBRACE', r'\}'),
 
     # Punctuations (Multi-Character)
-    'ELLIPSIS': r'\.\.\.',
+    ('ELLIPSIS', r'\.\.\.'),
     # Punctuations
-    'COMMA': r',',
-    'DOT': r'\.',
-    'COLON': r':',
-    'SEMI': r';',
-    'RARROW': r'\->',
+    ('COMMA', r','),
+    ('DOT', r'\.'),
+    ('COLON', r':'),
+    ('SEMI', r';'),
+    ('RARROW', r'\->'),
 
     # In-place Operations (Multi-Character)
-    'DOUBLESLASHEQUAL': r'//=',
-    'PLUSEQUAL': r'\+=',
-    'MINUSEQUAL': r'\-=',
-    'STAREQUAL': r'\*=',
-    'ATEQUAL': r'@=',
-    'SLASHEQUAL': r'/=',
-    'PERCENTEQUAL': r'%=',
-    'DOUBLESTAREQUAL': r'\*\*=',
-    'LEFTSHIFTEQUAL': r'<<=',
-    'RIGHTSHIFTEQUAL': r'>>=',
-    'AMPEREQUAL': r'&=',
-    'CIRCUMFLEXEQUAL': r'\^=',
-    'VBAREQUAL': r'\|=',
+    ('DOUBLESLASHEQUAL', r'//='),
+    ('PLUSEQUAL', r'\+='),
+    ('MINUSEQUAL', r'\-='),
+    ('STAREQUAL', r'\*='),
+    ('ATEQUAL', r'@='),
+    ('SLASHEQUAL', r'/='),
+    ('PERCENTEQUAL', r'%='),
+    ('DOUBLESTAREQUAL', r'\*\*='),
+    ('LEFTSHIFTEQUAL', r'<<='),
+    ('RIGHTSHIFTEQUAL', r'>>='),
+    ('AMPEREQUAL', r'&='),
+    ('CIRCUMFLEXEQUAL', r'\^='),
+    ('VBAREQUAL', r'\|='),
     # Comparison Operations (Multi-Character)
-    'EQEQEQUAL': r'===',
-    'NOTEQEQEQUAL': r'!==',
-    'LESSEQUAL': r'<=',
-    'EQEQUAL': r'==',
-    'NOTEQUAL': r'!=',
-    'GREATEREQUAL': r'>=',
+    ('EQEQEQUAL', r'==='),
+    ('NOTEQEQEQUAL', r'!=='),
+    ('LESSEQUAL', r'<='),
+    ('EQEQUAL', r'=='),
+    ('NOTEQUAL', r'!='),
+    ('GREATEREQUAL', r'>='),
     # Mathematical/Bitwise Operations (Multi-Character)
-    'DOUBLESLASH': r'//',
-    'DOUBLESTAR': r'\*\*',
-    'LEFTSHIFT': r'<<',
-    'RIGHTSHIFT': r'>>',
+    ('DOUBLESLASH', r'//'),
+    ('DOUBLESTAR', r'\*\*'),
+    ('LEFTSHIFT', r'<<'),
+    ('RIGHTSHIFT', r'>>'),
     # Comparison Operations
-    'LESS': r'<',
-    'GREATER': r'>',
+    ('LESS', r'<'),
+    ('GREATER', r'>'),
+    # Mathematical/Bitwise Operations (Multi-Character)
+    ('PLUSPLUS', r'\+\+'),
+    ('MINUSMINUS', r'\-\-'),
     # Mathematical/Bitwise Operations
-    'PLUS': r'\+',
-    'MINUS': r'\-',
-    'STAR': r'\*',
-    'AT': r'@',
-    'SLASH': r'/',
-    'PERCENT': r'%',
-    'AMPER': r'&',
-    'CIRCUMFLEX': r'\^',
-    'VBAR': r'\|',
+    ('PLUS', r'\+'),
+    ('MINUS', r'\-'),
+    ('STAR', r'\*'),
+    ('AT', r'@'),
+    ('SLASH', r'/'),
+    ('PERCENT', r'%'),
+    ('AMPER', r'&'),
+    ('CIRCUMFLEX', r'\^'),
+    ('VBAR', r'\|'),
     # Unary Operations
-    'TILDE': r'~',
+    ('TILDE', r'~'),
     # Assignment Operations
-    'EQUAL': r'=',
-}
+    ('EQUAL', r'='),
+]
+
+TOKEN_PATTERNS = [
+    (keyword.upper(), keyword) for keyword in RESERVED_KEYWORD
+] + TOKEN_PATTERNS
 
 IGNORED_PATTERNS = [
     r'\s+',
@@ -114,7 +120,7 @@ IGNORED_PATTERNS = [
     r'/\*[\s\S]*\*/',
 ]
 
-TOKENS = [*TOKEN_PATTERNS]
+TOKENS = [name for name, pattern in TOKEN_PATTERNS]
 
 BIN_OP = {
     'PLUS': Add,
@@ -166,13 +172,23 @@ UNARY_OP = {
     'MINUS': USub,
 }
 
+POST_INPLACE_UNARY_OP = {
+    'PLUSPLUS': PostIncrement,
+    'MINUSMINUS': PostDecrement,
+}
+
+PRE_INPLACE_UNARY_OP = {
+    'PLUSPLUS': PreIncrement,
+    'MINUSMINUS': PreDecrement,
+}
+
 
 class LexerGenerator:
     def __init__(self, /) -> None:
         self.lexer = RplyLexerGenerator()
 
     def add_tokens(self, /) -> None:
-        for name, pattern in TOKEN_PATTERNS.items():
+        for name, pattern in TOKEN_PATTERNS:
             if match(r'^[a-z]+$', pattern):
                 self.lexer.add(name, f'\\b{pattern}\\b')
             else:

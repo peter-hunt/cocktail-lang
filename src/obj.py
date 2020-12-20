@@ -333,6 +333,22 @@ class StringType(Type):
         return True if self.value else False
 
     # ----- Iterable Methods ----- #
+    def __len__(self, /):
+        return len(self.value)
+
+    def __getitem__(self, key, /):
+        if isinstance(key, int):
+            return self.value[key]
+        else:
+            slice = []
+            for item in (key.start, key.stop, key.step):
+                if isinstance(item, NumberType):
+                    slice.append(int(item.value))
+                else:
+                    slice.append(None)
+            start, stop, step = slice
+            return self.value[start:stop:step]
+
     def __iter__(self, /):
         return iter(self.value)
 
