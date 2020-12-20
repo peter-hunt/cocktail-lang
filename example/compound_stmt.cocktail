@@ -22,12 +22,20 @@ if (c > 0) {
 }
 
 
-print('\n# While Statement');
-a = 0;
-
+print('\n# For Statement');
 for (i=1; i<=10; i++) {
     print(i);
 }
+
+print('\n# For-of Statement');
+b = [1, 2, 3];
+
+for (a of b) {
+    print(a);
+}
+
+print('\n# While Statement');
+a = 0;
 
 while (a <= 10) {
     a = a + 1;

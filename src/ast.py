@@ -50,7 +50,7 @@ __all__ = [
     'Eq', 'Gt', 'GtE', 'In', 'Is', 'IsNot', 'Lt', 'LtE', 'NotEq', 'NotIn',
 
     'GetItem',
-    'If', 'For', 'While',
+    'If', 'For', 'ForOf', 'While',
 
     'ScopeStmt',
     'Break', 'Continue', 'Exit',
@@ -1035,6 +1035,29 @@ class For(Ast):
                     return stmt
 
             self.loop.eval(env=env)
+
+
+@dataclass
+class ForOf(Ast):
+    _fields = ('target', 'source', 'body')
+    target: Ast
+    source: Ast
+    body: TypingList[Ast]
+
+    def eval(self, /, *, env):
+        for value in self.source.eval(env=env):
+            env[self.target.id] = value
+
+            for stmt in self.body:
+                if isinstance(stmt, Break):
+                    return
+                elif isinstance(stmt, Continue):
+                    break
+
+                result = stmt.eval(env=env)
+
+                if isinstance(result, Exit):
+                    return stmt
 
 
 @dataclass

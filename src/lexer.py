@@ -32,8 +32,8 @@ __all__ = [
 
 
 RESERVED_KEYWORD = [
-    'break', 'continue', 'elif', 'else',
-    'func', 'for', 'if', 'in', 'not', 'while'
+    'break', 'continue', 'elif', 'else', 'func',
+    'for', 'if', 'in', 'not', 'of', 'while'
 ]
 
 

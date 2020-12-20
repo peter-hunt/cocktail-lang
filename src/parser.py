@@ -64,6 +64,7 @@ class Parser:
         @self.pg.production('program : if_elif_stmt program')
         @self.pg.production('program : func_def program')
         @self.pg.production('program : for_stmt program')
+        @self.pg.production('program : for_of_stmt program')
         @self.pg.production('program : while_stmt program')
         def merge_stmt_to_program(p):
             return Module([p[0], *p[1].body])
@@ -130,6 +131,12 @@ class Parser:
             return For(p[2], p[4], p[6], p[9].body)
 
         @self.pg.production(
+            'for_of_stmt : FOR LPAR NAME OF expr RPAR LBRACE program RBRACE'
+        )
+        def for_of_stmt(p):
+            return ForOf(Name(p[2], Store()), p[4], p[7].body)
+
+        @self.pg.production(
             'while_stmt : WHILE LPAR expr RPAR LBRACE program RBRACE'
         )
         def while_stmt(p):
@@ -148,8 +155,7 @@ class Parser:
 
         @self.pg.production('break_stmt : BREAK')
         def break_stmt(p):
-            result = Break(p[0])
-            return result
+            return Break(p[0])
 
         @self.pg.production('continue_stmt : CONTINUE')
         def continue_stmt(p):
@@ -319,10 +325,7 @@ class Parser:
         @self.pg.production('expr : NAME LPAR RPAR')
         @self.pg.production('expr : NAME LPAR tuple_expr RPAR')
         def function_call_expr(p):
-            if len(p) == 3:
-                args = ()
-            else:
-                args = p[2].values
+            args = () if len(p) == 3 else p[2].values
 
             if p[0].value == 'input':
                 return Input(args)
@@ -344,16 +347,14 @@ class Parser:
         @self.pg.production('expr : expr '
                             'LSQB opt_expr COLON opt_expr COLON opt_expr RSQB')
         def get_item_expr(p):
-            slice = Slice(p[2], p[4], none if len(p) == 6 else p[6])
-            return GetItem(p[0], slice)
+            return GetItem(
+                p[0], Slice(p[2], p[4], none if len(p) == 6 else p[6])
+            )
 
         @self.pg.production('opt_expr : ')
         @self.pg.production('opt_expr : expr')
         def optional_expr(p):
-            if p:
-                return p[0]
-            else:
-                return Constant(none)
+            return p[0] if p else Constant(none)
 
         @self.pg.production('expr : expr PLUS expr')
         @self.pg.production('expr : expr MINUS expr')
