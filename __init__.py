@@ -15,6 +15,7 @@ from src.run import __all__ as __run_all__
 
 
 __version__ = '0.1.0'
+__version_info__ = tuple(int(segment) for segment in __version__.split('.'))
 __all__ = (
     __ast_all__ + __astprint_all__ + __moduleinfo_all__ + __obj_all__ +
     __lexer_all__ + __parser_all__ + __run_all__

@@ -3,9 +3,7 @@ from rply import Token
 from .moduleinfo import ModuleInfo
 
 
-__all__ = [
-    'throw',
-]
+__all__ = ['throw']
 
 
 def throw(info: ModuleInfo, token: Token, error: str = 'Error', msg: str = '',

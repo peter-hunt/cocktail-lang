@@ -1,9 +1,7 @@
 from dataclasses import dataclass
 
 
-__all__ = [
-    'ModuleInfo',
-]
+__all__ = ['ModuleInfo']
 
 
 @dataclass

@@ -117,7 +117,6 @@ print(List((1, 2, 3, 4)));
 print(Tuple([2, 3, 4, 5]));
 print(List(String(Tuple('py'))));
 
-# # Input
-# text = input('> ');  # BUG
-# print('You entered: ');
-# print(text);
+# Input
+text = input('> ');
+print('You entered', repr(text));

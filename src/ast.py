@@ -120,7 +120,7 @@ class AugAssign(Ast):
 
 @dataclass
 class Construct(Ast):
-    _fields = ('type', 'obj')
+    _fields = ('type', 'args')
     type: builtin_type
     args: TypingTuple[Ast]
 
@@ -1042,13 +1042,12 @@ class Arguments(Ast):
 
 @dataclass
 class BuiltinFunction(Ast):
-    _fields = ()
+    _fields = ('args',)
     args: TypingTuple[Ast] = field(default_factory=list)
 
 
 @dataclass
 class Exit(BuiltinFunction, ScopeStmt):
-    _fields = ('code',)
     args: Union[Ast, None]
 
     def eval(self, /, *, env):

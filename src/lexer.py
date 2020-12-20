@@ -1,3 +1,5 @@
+from re import match
+
 from rply import LexerGenerator as RplyLexerGenerator
 from rply.lexer import LexerStream, Lexer
 
@@ -171,7 +173,10 @@ class LexerGenerator:
 
     def add_tokens(self, /) -> None:
         for name, pattern in TOKEN_PATTERNS.items():
-            self.lexer.add(name, pattern)
+            if match(r'^[a-z]+$', pattern):
+                self.lexer.add(name, f'\\b{pattern}\\b')
+            else:
+                self.lexer.add(name, pattern)
 
         for pattern in IGNORED_PATTERNS:
             self.lexer.ignore(pattern)

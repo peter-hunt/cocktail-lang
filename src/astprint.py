@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from sys import stdout
 from typing import Any, Generator, Union
 
 from rply.token import Token
@@ -6,10 +7,7 @@ from rply.token import Token
 from .ast import Ast, ExprContent
 
 
-__all__ = [
-    'astformat',
-    'astprint',
-]
+__all__ = ['astformat', 'astprint']
 
 
 def _is_sub_node(node: Any) -> bool:
@@ -19,7 +17,7 @@ def _is_sub_node(node: Any) -> bool:
 def _is_leaf(node: Ast) -> bool:
     for field in node._fields:
         if not hasattr(node, field):
-            exit(f'{node}, {field}')
+            raise ValueError(f'field {field!r} not found for node {node}')
         attr = getattr(node, field)
         if _is_sub_node(attr):
             return False
@@ -112,5 +110,7 @@ def astformat(
         return out
 
 
-def astprint(*args, **kwargs) -> None:
-    print(astformat(*args, **kwargs))
+def astprint(node: Any, indent: str = '  ', _indent: int = 0,
+             sep=' ', end='\n', file=stdout, flush=False) -> None:
+    print(astformat(node, indent, _indent),
+          sep=sep, end=end, file=file, flush=flush)

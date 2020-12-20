@@ -7,10 +7,7 @@ from .lexer import lex
 from .parser import parse
 
 
-__all__ = [
-    'tokenize',
-    'execute',
-]
+__all__ = ['tokenize', 'execute']
 
 
 def tokenize(source: str, /, *, path: str = '<unknown>') -> Iterator[Token]:
@@ -31,5 +28,6 @@ def tokenize(source: str, /, *, path: str = '<unknown>') -> Iterator[Token]:
              f'SyntaxError: invalid syntax')
 
 
-def execute(source: str, /, *, path: str = '<unknown>') -> None:
-    parse(source, path=path).eval()
+def execute(source: str, /,
+            *, path: str = '<unknown>', log: str = 'default') -> None:
+    parse(source, path=path, log=log).eval()

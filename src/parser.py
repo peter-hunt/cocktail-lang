@@ -15,11 +15,7 @@ from .obj import (
 )
 
 
-__all__ = [
-    'Parser',
-    'get_parser',
-    'parse',
-]
+__all__ = ['Parser', 'get_parser', 'parse']
 
 
 class Parser:
@@ -527,6 +523,7 @@ def get_parser(info: ModuleInfo, /, *, log: str = 'default') -> LRParser:
         return parser
     elif log == 'none':
         with catch_warnings():
+            filterwarnings('ignore')
             return Parser().get_parser(info)
     else:
         raise ValueError(f"param log must be 'full', 'default', or 'none', "
@@ -547,12 +544,12 @@ def informed(node: Ast, info: ModuleInfo) -> Ast:
 
 
 def parse(source: str, *, path: str = '<unknown>',
-          parser_getter=None) -> Module:
+          log: str = 'default') -> Module:
     tokens = lex(source)
 
     info = ModuleInfo(source, path)
 
-    parser = (parser_getter or get_parser)(info)
+    parser = get_parser(info, log=log)
 
     try:
         module = parser.parse(tokens)
