@@ -1007,17 +1007,19 @@ class If(Ast):
                 return stmt
 
             result = stmt.eval(env=env)
+
             if isinstance(result, ScopeStmt):
                 return result
 
 
 @dataclass
 class For(Ast):
-    _fields = ('init', 'cond', 'loop', 'body')
+    _fields = ('init', 'cond', 'loop', 'body', 'orelse')
     init: Ast
     cond: Ast
     loop: Ast
     body: TypingList[Ast]
+    orelse: TypingList[Ast] = field(default_factory=list)
 
     def eval(self, /, *, env):
         self.init.eval(env=env)
@@ -1036,28 +1038,60 @@ class For(Ast):
 
             self.loop.eval(env=env)
 
+        for stmt in self.orelse:
+            if isinstance(stmt, ScopeStmt):
+                return stmt
+
+            result = stmt.eval(env=env)
+
+            if isinstance(result, ScopeStmt):
+                return result
+
 
 @dataclass
 class ForOf(Ast):
-    _fields = ('target', 'source', 'body')
+    _fields = ('target', 'source', 'body', 'orelse')
     target: Ast
     source: Ast
     body: TypingList[Ast]
+    orelse: TypingList[Ast] = field(default_factory=list)
 
     def eval(self, /, *, env):
-        for value in self.source.eval(env=env):
-            env[self.target.id] = value
+        value = self.source.eval(env=env)
+        target_value = self.target.eval(env=env)
 
-            for stmt in self.body:
-                if isinstance(stmt, Break):
-                    return
-                elif isinstance(stmt, Continue):
-                    break
+        if not hasattr(value, '__iter__'):
+            throw(source.info, source.token, 'TypeError',
+                  f"'{type(value).__name__}' object is not iterable",
+                  line=True)
 
-                result = stmt.eval(env=env)
+        iterator = iter(value)
 
-                if isinstance(result, Exit):
-                    return stmt
+        try:
+            while True:
+                env[target_value.id] = next(iterator)
+
+                for stmt in self.body:
+                    if isinstance(stmt, Break):
+                        return
+                    elif isinstance(stmt, Continue):
+                        break
+
+                    result = stmt.eval(env=env)
+
+                    if isinstance(result, Exit):
+                        return stmt
+        except StopIteration:
+            pass
+
+        for stmt in self.orelse:
+            if isinstance(stmt, ScopeStmt):
+                return stmt
+
+            result = stmt.eval(env=env)
+
+            if isinstance(result, ScopeStmt):
+                return result
 
 
 @dataclass
@@ -1087,6 +1121,7 @@ class While(Ast):
                 return stmt
 
             result = stmt.eval(env=env)
+
             if isinstance(result, ScopeStmt):
                 return result
 
@@ -1201,11 +1236,15 @@ class BuiltinFunction(Ast):
 
 @dataclass
 class Exit(BuiltinFunction, ScopeStmt):
-    args: Union[Ast, None]
-
     def eval(self, /, *, env):
-        if self.code is not None:
-            print(self.code.eval(env=env))
+        if len(self.args) > 1:
+            throw(self.args[0].info, self.args[0].token, 'TypeError',
+                  f'exit excepted at most 1 argument, got {len(self.args)}',
+                  line=True)
+
+        if self.args:
+            print(self.args[0].eval(env=env))
+
         return self
 
 

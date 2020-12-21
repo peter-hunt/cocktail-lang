@@ -131,10 +131,24 @@ class Parser:
             return For(p[2], p[4], p[6], p[9].body)
 
         @self.pg.production(
+            'for_stmt : FOR LPAR opt_expr SEMI opt_expr SEMI opt_expr RPAR'
+            '           LBRACE program RBRACE or_else_stmt'
+        )
+        def for_stmt(p):
+            return For(p[2], p[4], p[6], p[9].body, p[11])
+
+        @self.pg.production(
             'for_of_stmt : FOR LPAR NAME OF expr RPAR LBRACE program RBRACE'
         )
         def for_of_stmt(p):
             return ForOf(Name(p[2], Store()), p[4], p[7].body)
+
+        @self.pg.production(
+            'for_of_stmt : FOR LPAR NAME OF expr RPAR LBRACE program RBRACE'
+            '              or_else_stmt'
+        )
+        def for_of_stmt(p):
+            return ForOf(Name(p[2], Store()), p[4], p[7].body, p[9])
 
         @self.pg.production(
             'while_stmt : WHILE LPAR expr RPAR LBRACE program RBRACE'

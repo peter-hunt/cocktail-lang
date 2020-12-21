@@ -25,6 +25,11 @@ if (c > 0) {
 print('\n# For Statement');
 for (i=1; i<=10; i++) {
     print(i);
+    if (i > 10) {
+        exit('Bug!!!');
+    }
+} else {
+    print('No bugs occured :)');
 }
 
 print('\n# For-of Statement');
@@ -32,6 +37,11 @@ b = [1, 2, 3];
 
 for (a of b) {
     print(a);
+    if (a > 3) {
+        exit('Bug!!!');
+    }
+} else {
+    print('Worked fluently :)');
 }
 
 print('\n# While Statement');

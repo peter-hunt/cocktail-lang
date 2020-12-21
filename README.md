@@ -18,7 +18,7 @@ This project requires Python 3.8
 
 
 ## Extension
-[Cocktail Lang Support](https://github.com/peter-hunt/cocktail-lang-support)
+[Cocktail Lang Support](https://github.com/peter-hunt/peter-hunt.cocktail-lang-support)
 
 WARNING: This extension is unstable, read the instructions carefully before installing.
 
