@@ -1,6 +1,7 @@
 from builtins import type as builtin_type
 from copy import deepcopy
 from dataclasses import dataclass, field
+from re import compile as re_compile, error as re_error, match as re_match
 from typing import List as TypingList, Tuple as TypingTuple, Union
 
 from rply.token import BaseBox, Token
@@ -58,7 +59,8 @@ __all__ = [
     'FunctionDef',
     'Global', 'Return', 'Nonlocal',
     'Arg', 'Arguments',
-    'Input', 'Print', 'Repr',
+
+    'BUILTIN_FUNCTIONS',
 ]
 
 
@@ -1261,6 +1263,35 @@ class Input(BuiltinFunction):
 
 
 @dataclass
+class Match(BuiltinFunction):
+    def eval(self, /, *, env):
+        if len(self.args) != 2:
+            throw(self.args[0].info, self.args[0].token, 'TypeError',
+                  f'match excepted exactly 2 arguments, got {len(self.args)}',
+                  line=True)
+
+        pattern, string = self.args
+        pattern_value = pattern.eval(env=env)
+        string_value = string.eval(env=env)
+
+        if not isinstance(pattern_value, StringType):
+            throw(pattern.info, pattern.token, 'TypeError',
+                  'the pattern must be a StringType', line=True)
+
+        if not isinstance(string_value, StringType):
+            throw(string.info, string.token, 'TypeError',
+                  'the string must be a StringType', line=True)
+
+        try:
+            pattern_obj = re_compile(pattern_value.value)
+        except re_error as err:
+            throw(pattern.info, pattern.token, 'RegexError',
+                  f'{err}', line=True)
+
+        return bool(re_match(pattern_obj, string_value.value))
+
+
+@dataclass
 class Print(BuiltinFunction):
     def eval(self, /, *, env):
         print(' '.join(f'{value.eval(env=env)}' for value in self.args))
@@ -1276,3 +1307,13 @@ class Repr(BuiltinFunction):
                   line=True)
 
         return StringType(f'{self.args[0].eval(env=env)!r}')
+
+
+BUILTIN_FUNCTIONS = {
+    'exit': Exit,
+    'input': Input,
+    'match': Match,
+    'quit': Exit,
+    'print': Print,
+    'repr': Repr,
+}

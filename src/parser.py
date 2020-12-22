@@ -341,14 +341,8 @@ class Parser:
         def function_call_expr(p):
             args = () if len(p) == 3 else p[2].values
 
-            if p[0].value == 'input':
-                return Input(args)
-            elif p[0].value == 'print':
-                return Print(args)
-            elif p[0].value == 'repr':
-                return Repr(args)
-            elif p[0].value in {'exit', 'quit'}:
-                return Exit(args)
+            if p[0].value in BUILTIN_FUNCTIONS:
+                return BUILTIN_FUNCTIONS[p[0].value](args)
 
             elif p[0].value in CONSTRUCTOR_TYPES:
                 return Construct(CONSTRUCTOR_TYPES[p[0].value], args)

@@ -38,13 +38,13 @@ RESERVED_KEYWORD = [
 
 
 TOKEN_PATTERNS = [
-    # Identifiers
-    ('NAME', r'[A-Za-z_]\w*'),
     # Constants
     ('NUMBER', (r'\d+(\.(\d+)?)?([Ee][+\-]?\d+)?'
                 r'|(\d+)?\.\d+([Ee][+\-]?\d+)?')),
     ('STRING', (r'[Rr]?"[^"\n\\]*((\\.)*[^"\n\\]*)*(\\.)*"'
-                r"|'[^'\n\\]*((\\.)*[^'\n\\]*)*(\\.)*'")),
+                r"|[Rr]?'[^'\n\\]*((\\.)*[^'\n\\]*)*(\\.)*'")),
+    # Identifiers
+    ('NAME', r'[A-Za-z_]\w*'),
 
     # Parenthesis
     ('LPAR', r'\('), ('RPAR', r'\)'),
