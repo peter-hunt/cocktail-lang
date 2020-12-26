@@ -450,7 +450,7 @@ def parse_defaults(doc):
 
 def printable_usage(doc):
     # in python < 2.7 you can't pass flags=IGNORECASE
-    usage_split = split(r'([Uu][Ss][Aa][Gg][Ee]:)', doc)
+    usage_split = split(r'(usage:)', doc, flags=IGNORECASE)
     if len(usage_split) < 3:
         raise DocoptLanguageError('"usage:" (case-insensitive) not found.')
     if len(usage_split) > 3:
@@ -465,11 +465,9 @@ def formal_usage(printable_usage):
 
 def extras(help, version, options, doc):
     if help and any((o.name in {'-h', '--help'}) and o.value for o in options):
-        print(doc.strip("\n"))
-        exit()
+        exit(doc.strip('\n'))
     if version and any(o.name == '--version' and o.value for o in options):
-        print(version)
-        exit()
+        exit(version)
 
 
 class Dict(dict):
