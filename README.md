@@ -17,12 +17,15 @@ Use git to install Cocktail Lang.
 git clone https://github.com/peter-hunt/cocktail-lang.git
 ```
 
-Make sure you have Python on your system, and then to install Dependencies, go to the project's directory and enter this command
+This project is using libraries organized for Python 3.8+ built into the directory
+Docopt 0.6.2 and Rply 0.7.7 are used.
+To install original Dependencies, go to the project's directory and enter these commands
 ```bash
+rm -rf rply docopt.py
 pip install -r requirements.txt
 ```
 
-This project requires Python 3.8
+This project requires Python 3.8+
 
 
 ## Current State

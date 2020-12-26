@@ -28,6 +28,7 @@ class Parser:
         self.pg = ParserGenerator(
             TOKENS,
             precedence=[
+                ('left', ['EQUAL', *INPLACE_OP]),
                 ('left', ['NOT']),
                 ('left', [
                     'LESS', 'LESSEQUAL',
@@ -41,7 +42,7 @@ class Parser:
                 ('left', ['PLUS', 'MINUS']),
                 ('left', ['LEFTSHIFT', 'RIGHTSHIFT']),
                 ('left', ['STAR', 'SLASH', 'DOUBLESLASH', 'PERCENT']),
-                ('left', ['INVERT', 'UADD', 'USUB']),
+                ('right', ['INVERT', 'UADD', 'USUB']),
                 ('left', ['DOUBLESTAR']),
             ],
         )
@@ -80,21 +81,13 @@ class Parser:
         def if_stmt(p):
             return If(p[2], p[5].body)
 
-        @self.pg.production(
-            'if_else_stmt : if_stmt or_else_stmt'
-        )
+        @self.pg.production('if_else_stmt : if_stmt or_else_stmt')
         def if_else_stmt(p):
             return If(p[0].test, p[0].body, p[1])
 
-        @self.pg.production(
-            'if_elif_stmt : if_stmt merged_elif_stmt'
-        )
-        @self.pg.production(
-            'if_elif_stmt : if_stmt elif_ending_stmt'
-        )
-        @self.pg.production(
-            'if_elif_stmt : if_stmt elif_else_stmt'
-        )
+        @self.pg.production('if_elif_stmt : if_stmt merged_elif_stmt')
+        @self.pg.production('if_elif_stmt : if_stmt elif_ending_stmt')
+        @self.pg.production('if_elif_stmt : if_stmt elif_else_stmt')
         def if_elif_stmt(p):
             return If(p[0].test, p[0].body, [p[1]])
 
@@ -396,8 +389,8 @@ class Parser:
         @self.pg.production('expr : NAME VBAREQUAL expr')
         def inplace_assign_expr(p):
             if p[0].value in RESERVED:
-                throw(info, name, 'SyntaxError',
-                      f"'{name.value}' is an illegal expression "
+                throw(info, p[0], 'SyntaxError',
+                      f"'{p[0].value}' is an illegal expression "
                       f"for augmented assignment")
 
             return AugAssign(
@@ -410,8 +403,8 @@ class Parser:
         @self.pg.production('expr : NAME MINUSMINUS')
         def inplace_unary_expr(p):
             if p[0].value in RESERVED:
-                throw(info, name, 'SyntaxError',
-                      f"'{name.value}' is an illegal expression "
+                throw(info, p[0], 'SyntaxError',
+                      f"'{p[0].value}' is an illegal expression "
                       f"for inplace unary operation")
 
             return InplaceUnaryOp(
@@ -424,8 +417,8 @@ class Parser:
         @self.pg.production('expr : MINUSMINUS NAME')
         def inplace_unary_expr(p):
             if p[1].value in RESERVED:
-                throw(info, name, 'SyntaxError',
-                      f"'{name.value}' is an illegal expression "
+                throw(info, p[0], 'SyntaxError',
+                      f"'{p[0].value}' is an illegal expression "
                       f"for inplace unary operation")
 
             return InplaceUnaryOp(
