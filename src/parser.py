@@ -252,13 +252,14 @@ class Parser:
         @self.pg.production('kw_only_args : STAR NAME COMMA kwargs')
         def kw_only_args_with_vararg_expr(p):
             return Arguments(
-                vararg=Arg(p[1].value), kwonlyargs=p[3][0], kw_defaults=p[3][1]
+                vararg=Arg(p[1].value, p[1]),
+                kwonlyargs=p[3][0], kw_defaults=p[3][1]
             )
 
         @self.pg.production('kw_only_args : STAR NAME COMMA args COMMA kwargs')
         def kw_only_args_with_vararg_kwargs_expr(p):
             return Arguments(
-                vararg=Arg(p[1].value),
+                vararg=Arg(p[1].value, p[1]),
                 kwonlyargs=p[3][0] + p[5][0], kw_defaults=p[3][1] + p[5][1],
             )
 
@@ -268,7 +269,7 @@ class Parser:
 
         @self.pg.production('opt_kwarg : DOUBLESTAR NAME')
         def optional_keyword_arg_expr(p):
-            return Arguments(kwarg=Arg(p[1].value))
+            return Arguments(kwarg=Arg(p[1].value, p[1]))
 
         @self.pg.production('normal_args :')
         def empty_normal_args_expr(p):
@@ -302,19 +303,21 @@ class Parser:
 
         @self.pg.production('args : NAME COMMA args')
         def args_expr(p):
-            return [[Arg(p[0].value), *p[2][0]], [None, *p[2][1]]]
+            return [[Arg(p[0].value, p[0]), *p[2][0]], [None, *p[2][1]]]
 
         @self.pg.production('args : NAME')
         def single_arg_expr(p):
-            return [[Arg(p[0].value)], [None]]
+            return [[Arg(p[0].value, p[0])], [None]]
 
         @self.pg.production('kwargs : assignment COMMA kwargs')
         def keyword_args_expr(p):
-            return [[Arg(p[0].target.id), *p[4][0]], [p[0].value, *p[4][1]]]
+            return [[Arg(p[0].target.id, p[0].target.token), *p[4][0]],
+                    [p[0].value, *p[4][1]]]
 
         @self.pg.production('kwargs : assignment')
         def single_keyword_arg_expr(p):
-            return [[Arg(p[0].target.id)], [p[0].value]]
+            return [[Arg(p[0].target.id, p[0].target.token)],
+                    [p[0].value]]
 
         @self.pg.production('expr : assignment')
         def assignment_as_expr(p):

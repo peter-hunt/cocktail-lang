@@ -1,5 +1,0 @@
-func a(num=1) {
-    print(num + 1);
-}
-
-print(a);

@@ -15,7 +15,6 @@ Options:
 """
 
 from pathlib import Path
-from sys import stdout
 
 from docopt import docopt
 
@@ -35,12 +34,10 @@ def _get_file(args):
             exit(f'{Path(__file__)}: {output}: Is a directory')
 
         return open(output, 'w+')
-    else:
-        return stdout
 
 
-def main():
-    args = docopt(__doc__, version=f'Cocktail {__version__}')
+def main(argv=None):
+    args = docopt(__doc__, argv=argv, version=f'Cocktail {__version__}')
     if args['<file>']:
         output_used = args['-o'] is not None
         output = _get_file(args)
@@ -67,7 +64,6 @@ def main():
             )
             ast = parser.parse(tokens)
 
-            print(ast, file=output)
             astprint(ast, file=output)
         else:
             execute(source, path=f'{path}')

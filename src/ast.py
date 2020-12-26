@@ -2,7 +2,9 @@ from builtins import type as builtin_type
 from copy import deepcopy
 from dataclasses import dataclass, field
 from re import compile as re_compile, error as re_error, match as re_match
-from typing import List as TypingList, Tuple as TypingTuple, Union
+from typing import (
+    Dict as TypingDict, List as TypingList, Tuple as TypingTuple, Union
+)
 
 from rply.token import BaseBox, Token
 
@@ -56,7 +58,8 @@ __all__ = [
     'ScopeStmt',
     'Break', 'Continue', 'Exit',
 
-    'FunctionDef',
+    'FunctionDef', 'Call',
+    'FunctionStmt',
     'Global', 'Return', 'Nonlocal',
     'Arg', 'Arguments',
 
@@ -82,19 +85,22 @@ class Module(Ast):
     _fields = ('body',)
     body: list = field(default_factory=list)
 
+    def __init__(self, body=None):
+        self.body = [] if body is None else body
+
     def eval(self, /):
-        env = deepcopy(DEFAULT_ENV)
+        env = DEFAULT_ENV.copy()
 
         for stmt in self.body:
-            if isinstance(stmt, ScopeStmt) and not isinstance(stmt, Exit):
+            result = stmt.eval(env=env)
+            if isinstance(result, ScopeStmt) and not isinstance(result, Exit):
                 throw(stmt.info, stmt.token, 'SyntaxError',
                       f"cannot use '{type(stmt).__name__.lower()}'"
                       f" outside loop")
-
-            result = stmt.eval(env=env)
-
-            if isinstance(result, Exit):
-                return ModuleType(env)
+            elif isinstance(result, FunctionStmt):
+                throw(stmt.info, stmt.token, 'SyntaxError',
+                      f"cannot use '{type(stmt).__name__.lower()}'"
+                      f" outside function definition")
 
         return ModuleType(env)
 
@@ -1159,30 +1165,37 @@ class FunctionDef(Ast):
 
 
 @dataclass
-class Global(Ast):
-    _fields = ('names',)
-    names: TypingList[Name]
+class Call(Ast):
+    _fields = ('func', 'args')
+    func: FunctionType
+    args: Ast
 
     def eval(self, /, *, env):
         pass
 
 
 @dataclass
-class Return(Ast):
+class FunctionStmt(Ast):
+    def eval(self, /, *, env):
+        return self
+
+
+@dataclass
+class Global(FunctionStmt):
+    _fields = ('names',)
+    names: TypingList[Name]
+
+
+@dataclass
+class Return(FunctionStmt):
     _fields = ('value',)
     value: Ast
 
-    def eval(self, /, *, env):
-        pass
-
 
 @dataclass
-class Nonlocal(Ast):
+class Nonlocal(FunctionStmt):
     _fields = ('names',)
     names: TypingList[Name]
-
-    def eval(self, /, *, env):
-        pass
 
 
 # arguments(
@@ -1207,8 +1220,12 @@ class Nonlocal(Ast):
 
 @dataclass
 class Arg(Ast):
-    _fields = ('arg',)
+    _fields = ('arg', 'token')
     arg: str
+    token: Token
+
+    def __hash__(self):
+        return hash(self.arg)
 
 
 @dataclass
@@ -1222,6 +1239,22 @@ class Arguments(Ast):
     kw_defaults: list = field(default_factory=list)
     kwarg: Union[Arg, None] = None
     defaults: list = field(default_factory=list)
+
+    def __init__(self, posonlyargs=None, args=None, vararg=None,
+                 kwonlyargs=None, kw_defaults=None, kwarg=None, defaults=None):
+        self.posonlyargs = [] if posonlyargs is None else posonlyargs
+        self.args = [] if args is None else args
+        self.vararg = vararg
+        self.kwonlyargs = [] if kwonlyargs is None else kwonlyargs
+        self.kw_defaults = [] if kw_defaults is None else kw_defaults
+        self.kwarg = kwarg
+        self.defaults = [] if defaults is None else defaults
+
+        argument_ids = {*()}
+
+        for arg in self.posonlyargs + self.args + self.kwonlyargs:
+            if arg in argument_ids:
+                throw()
 
     def eval(self, /, *, env):
         return ArgumentsType(

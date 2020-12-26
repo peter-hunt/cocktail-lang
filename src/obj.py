@@ -541,7 +541,7 @@ class ArgumentsType(Type):
 
 class FunctionType(Type):
     # ----- Initialization Methods ----- #
-    def __init__(self, /, *, name=None, args=None, body=None, qualname=None):
+    def __init__(self, /, name=None, args=None, body=None, *, qualname=None):
         self.name = '<anonymous>' if name is None else name
         self.args = ArgumentsType() if args is None else args
         self.body = [] if body is None else body
