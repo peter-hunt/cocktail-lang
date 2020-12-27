@@ -3,6 +3,5 @@ __pycache__
 .vscode
 
 debug.py
-test.py
 output.txt
 link.txt

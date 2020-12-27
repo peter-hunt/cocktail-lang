@@ -18,7 +18,7 @@ Go to the directory you want to download Regex in, and enter the following comma
 git clone https://github.com/peter-hunt/cocktail-lang.git
 ```
 
-Or use pip to install it as a package. (recommented)
+Or use pip to install it as a package. (recommended)
 
 ```bash
 pip install git+https://github.com/peter-hunt/cocktail-lang.git
