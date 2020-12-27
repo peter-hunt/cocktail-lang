@@ -6,7 +6,7 @@ from typing import (
     Dict as TypingDict, List as TypingList, Tuple as TypingTuple, Union
 )
 
-from rply.token import BaseBox, Token
+from .rply.token import BaseBox, Token
 
 from .error import throw
 from .obj import *

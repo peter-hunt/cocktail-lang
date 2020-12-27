@@ -11,17 +11,24 @@ The Cocktail Lang helps you to create speedy and beautiful code easily.
 
 
 ## Installation
-Use git to install Cocktail Lang.
+Use git to install Cocktail Lang as a folder.
+Go to the directory you want to download Regex in, and enter the following command:
 
 ```bash
 git clone https://github.com/peter-hunt/cocktail-lang.git
+```
+
+Or use pip to install it as a package. (recommented)
+
+```bash
+pip install git+https://github.com/peter-hunt/cocktail-lang.git
 ```
 
 This project is using libraries organized for Python 3.8+ built into the directory
 Docopt 0.6.2 and Rply 0.7.7 are used.
 To install original Dependencies, go to the project's directory and enter these commands
 ```bash
-rm -rf rply docopt.py
+rm -rf cocktail/rply cocktail/docopt.py
 pip install -r requirements.txt
 ```
 

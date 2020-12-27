@@ -1,7 +1,7 @@
 from typing import Iterator
 
-from rply import Token
-from rply.errors import LexingError
+from .rply import Token
+from .rply.errors import LexingError
 
 from .lexer import lex
 from .parser import parse

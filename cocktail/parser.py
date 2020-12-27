@@ -1,9 +1,9 @@
 from re import match
 from warnings import catch_warnings, filterwarnings
 
-from rply.errors import LexingError, ParserGeneratorWarning
-from rply.parser import LRParser
-from rply.parsergenerator import ParserGenerator
+from .rply.errors import LexingError, ParserGeneratorWarning
+from .rply.parser import LRParser
+from .rply.parsergenerator import ParserGenerator
 
 from .ast import *
 from .error import throw

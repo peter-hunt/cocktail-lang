@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 The Cocktail Lang.
   The Cocktail Lang helps you to create speedy and beautiful code easily.
@@ -17,14 +16,14 @@ Options:
 
 from pathlib import Path
 
-from docopt import docopt
+from .docopt import docopt
 
-from __init__ import __version__
-from src.astprint import astprint
-from src.lexer import lex
-from src.run import execute, tokenize
-from src.moduleinfo import ModuleInfo
-from src.parser import get_parser
+from .__init__ import __version__
+from .astprint import astprint
+from .lexer import lex
+from .run import execute, tokenize
+from .moduleinfo import ModuleInfo
+from .parser import get_parser
 
 
 def _get_file(args):

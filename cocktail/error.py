@@ -1,4 +1,4 @@
-from rply import Token
+from .rply import Token
 
 from .moduleinfo import ModuleInfo
 

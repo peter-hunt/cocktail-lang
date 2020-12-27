@@ -449,7 +449,6 @@ def parse_defaults(doc):
 
 
 def printable_usage(doc):
-    # in python < 2.7 you can't pass flags=IGNORECASE
     usage_split = split(r'(usage:)', doc, flags=IGNORECASE)
     if len(usage_split) < 3:
         raise DocoptLanguageError('"usage:" (case-insensitive) not found.')

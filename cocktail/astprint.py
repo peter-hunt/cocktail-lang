@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from sys import stdout
 from typing import Any, Generator, Union
 
-from rply.token import Token
+from .rply.token import Token
 
 from .ast import Ast, ExprContent
 
