@@ -53,8 +53,8 @@ The features that are currently implemented are as follows:
 WARNING: This extension is unstable, read the instructions carefully before installing.
 
 ## Donation
-This project is open-source and free-to-use, it would be really helpful to me to donate me!
-See my [Patreon](patreon.com/that_peterhunt) to make a donation.
+This project is open-source and free-to-use, it would be really helpful to support me!
+See my [Patreon](https://patreon.com/that_peterhunt) to make a donation.
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
