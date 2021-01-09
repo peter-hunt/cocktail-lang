@@ -62,7 +62,7 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 Please make sure to update tests as appropriate.
 
 ## Example and Testing
-To see examples of the Cocktail Lang programs, go to the tests directory.
+To see examples of the Cocktail programs, go to the tests directory.
 
 ## License
 [MIT](LICENSE.txt)

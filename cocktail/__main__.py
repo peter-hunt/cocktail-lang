@@ -6,12 +6,13 @@ Usage:
   cocktail [options] ... [-c cmd | <file>] [-o output]
 
 Options:
-  --ast -a      Parse the file and output the abstract syntax tree
-  -c cmd        Execute the line of code
-  --help -h     Show this help message and exit
-  --lex -l      Lex the file and output the tokens
-  -o output     Print the output to the file
-  --version -v  Show Cocktail version number and exit
+  --ast -a        Parse the file and output the abstract syntax tree
+  -c cmd          Execute the line of code
+  --debug -d      Show warnings for debug
+  --help -h       Show this help message and exit
+  --lex -l        Lex the file and output the tokens
+  -o output       Print the output to the file
+  --version -v    Show Cocktail version number and exit
 """
 
 from pathlib import Path
@@ -50,6 +51,8 @@ def main(argv=None):
         elif path.is_dir():
             exit(f'{Path(__file__)}: {path}: Is a directory')
 
+        debug = args['--debug']
+
         with open(path) as file:
             source = file.read()
 
@@ -61,16 +64,20 @@ def main(argv=None):
 
             parser = get_parser(
                 ModuleInfo(source, f'{path}'),
-                log='none' if output_used else 'default',
+                log='none' if output_used or not debug else 'default',
             )
             ast = parser.parse(tokens)
 
             astprint(ast, file=output)
         else:
-            execute(source, path=f'{path}')
+            execute(source, path=f'{path}', log='default' if debug else 'none')
 
     elif args['-c'] is not None:
-        execute(args['-c'], path='<string>')
+        debug = args['--debug']
+
+        execute(
+            args['-c'], path='<string>', log='default' if debug else 'none'
+        )
 
     else:
         exit(__doc__.split('\n\n')[1].strip())

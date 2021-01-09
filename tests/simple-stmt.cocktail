@@ -117,11 +117,14 @@ print(List((1, 2, 3, 4)));
 print(Tuple([2, 3, 4, 5]));
 print(List(String(Tuple('py'))));
 
-# Input
-text = input('\n> ');
-print('You entered', repr(text));
+print('\n# Builtin Functions');
+print(length('a'));
 
-# Regex match
-pattern = r"[_A-Za-z]\w*";
-print(pattern);
-print(match(pattern, "abc_2"))
+# # Input
+# text = input('\n> ');
+# print('You entered', repr(text));
+
+# print('\n# Regular expression');
+# pattern = r"[_A-Za-z]\w*";
+# print(pattern);
+# print(match(pattern, "abc_2"))

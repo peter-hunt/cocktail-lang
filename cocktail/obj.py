@@ -551,6 +551,10 @@ class FunctionType(Type):
     def __repr__(self, /):
         return f'<function {self.qualname} at {id(self):#x}>'
 
+    # ----- Functional Methods ----- #
+    def __call__(self, arguments, /):
+        pass
+
 
 class BuiltinFunctionType(Type):
     # ----- Initialization Methods ----- #

@@ -332,16 +332,21 @@ class Parser:
         def parentheses_number_multiplication(p):
             return BinOp(Number(p[0]), Mult, p[2])
 
-        @self.pg.production('expr : NAME LPAR RPAR')
-        @self.pg.production('expr : NAME LPAR tuple_expr RPAR')
+        @self.pg.production('expr : expr LPAR RPAR')
+        @self.pg.production('expr : expr LPAR tuple_expr RPAR')
+        @self.pg.production('expr : expr LPAR tuple_expr COMMA RPAR')
         def function_call_expr(p):
             args = () if len(p) == 3 else p[2].values
 
-            if p[0].value in BUILTIN_FUNCTIONS:
-                return BUILTIN_FUNCTIONS[p[0].value](args)
+            if isinstance(p[0], Name):
+                if p[0].token.value in BUILTIN_FUNCTIONS:
+                    return BUILTIN_FUNCTIONS[p[0].token.value](args)
 
-            elif p[0].value in CONSTRUCTOR_TYPES:
-                return Construct(CONSTRUCTOR_TYPES[p[0].value], args)
+                elif p[0].token.value in CONSTRUCTOR_TYPES:
+                    return Construct(CONSTRUCTOR_TYPES[p[0].token.value], args)
+
+            else:
+                return Call(p[0], args, {})
 
         @self.pg.production('expr : expr LSQB expr RSQB')
         def get_item_expr(p):
@@ -581,6 +586,9 @@ def get_parser(info: ModuleInfo, /, *, log: str = 'default') -> LRParser:
 
 
 def informed(node: Ast, info: ModuleInfo) -> Ast:
+    if node is None:
+        raise ValueError('cannot inform a node of None')
+
     node.info = info
     for field in node._fields:
         value = getattr(node, field)

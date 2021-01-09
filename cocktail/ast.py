@@ -1166,12 +1166,13 @@ class FunctionDef(Ast):
 
 @dataclass
 class Call(Ast):
-    _fields = ('func', 'args')
-    func: FunctionType
-    args: Ast
+    _fields = ('name', 'args', 'kwargs')
+    name: Name
+    args: TypingTuple[Ast]
+    kwargs: TypingDict[str, Ast]
 
     def eval(self, /, *, env):
-        pass
+        func = self.name.eval(env=env)
 
 
 @dataclass
@@ -1296,6 +1297,24 @@ class Input(BuiltinFunction):
 
 
 @dataclass
+class Length(BuiltinFunction):
+    def eval(self, /, *, env):
+        if len(self.args) != 1:
+            throw(self.args[0].info, self.args[0].token, 'TypeError',
+                  f'length excepted exactly 1 arguments, got {len(self.args)}',
+                  line=True)
+
+        value = self.args[0].eval(env=env)
+
+        if hasattr(value, '__len__'):
+            return NumberType(len(value))
+        else:
+            throw(self.args[0].info, self.args[0].token, 'TypeError',
+                  f'object of type {type(value).__name__} has no length()',
+                  line=True)
+
+
+@dataclass
 class Match(BuiltinFunction):
     def eval(self, /, *, env):
         if len(self.args) != 2:
@@ -1345,6 +1364,7 @@ class Repr(BuiltinFunction):
 BUILTIN_FUNCTIONS = {
     'exit': Exit,
     'input': Input,
+    'length': Length,
     'match': Match,
     'quit': Exit,
     'print': Print,
